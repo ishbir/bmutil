@@ -50,7 +50,7 @@ func (msg *MsgBroadcast) Decode(r io.Reader) error {
 
 	if msg.ObjectType != ObjectTypeBroadcast {
 		str := fmt.Sprintf("Object Type should be %d, but is %d",
-			ObjectTypeGetPubKey, msg.ObjectType)
+			ObjectTypeBroadcast, msg.ObjectType)
 		return messageError("Decode", str)
 	}
 
@@ -111,7 +111,7 @@ func (msg *MsgBroadcast) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver. This is part of the Message interface implementation.
 func (msg *MsgBroadcast) MaxPayloadLength() int {
-	return MaxMessagePayload
+	return MaxPayloadOfMsgObject
 }
 
 func (msg *MsgBroadcast) String() string {
