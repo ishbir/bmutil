@@ -176,7 +176,7 @@ func TestGetPubKeyWireError(t *testing.T) {
 		// Force error in tag.
 		{tagGetPubKey, tagGetPubKeyEncoded, 22, io.ErrShortWrite, io.EOF},
 		// Force error object type validation.
-		{baseGetPubKey, basePubKeyEncoded, 20, io.ErrShortWrite, wireErr},
+		{baseGetPubKey, basePubKeyEncoded, 22, io.ErrShortWrite, wireErr},
 	}
 
 	t.Logf("Running %d tests", len(tests))

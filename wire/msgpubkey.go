@@ -47,9 +47,10 @@ type MsgPubKey struct {
 // Decode decodes r using the bitmessage protocol encoding into the receiver.
 // This is part of the Message interface implementation.
 func (msg *MsgPubKey) Decode(r io.Reader) error {
-	var sec int64
 	var err error
-	if err = readElements(r, &msg.Nonce, &sec, &msg.ObjectType); err != nil {
+	msg.Nonce, msg.ExpiresTime, msg.ObjectType, msg.Version,
+		msg.StreamNumber, err = DecodeMsgObjectHeader(r)
+	if err != nil {
 		return err
 	}
 
@@ -57,15 +58,6 @@ func (msg *MsgPubKey) Decode(r io.Reader) error {
 		str := fmt.Sprintf("Object Type should be %d, but is %d",
 			ObjectTypePubKey, msg.ObjectType)
 		return messageError("Decode", str)
-	}
-
-	msg.ExpiresTime = time.Unix(sec, 0)
-	if msg.Version, err = bmutil.ReadVarInt(r); err != nil {
-		return err
-	}
-
-	if msg.StreamNumber, err = bmutil.ReadVarInt(r); err != nil {
-		return err
 	}
 
 	if msg.Version >= EncryptedPubKeyVersion {
@@ -113,16 +105,9 @@ func (msg *MsgPubKey) Decode(r io.Reader) error {
 // Encode encodes the receiver to w using the bitmessage protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgPubKey) Encode(w io.Writer) error {
-	err := writeElements(w, msg.Nonce, msg.ExpiresTime.Unix(), msg.ObjectType)
+	err := EncodeMsgObjectHeader(w, msg.Nonce, msg.ExpiresTime, msg.ObjectType,
+		msg.Version, msg.StreamNumber)
 	if err != nil {
-		return err
-	}
-
-	if err = bmutil.WriteVarInt(w, msg.Version); err != nil {
-		return err
-	}
-
-	if err = bmutil.WriteVarInt(w, msg.StreamNumber); err != nil {
 		return err
 	}
 

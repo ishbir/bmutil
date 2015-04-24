@@ -12,14 +12,13 @@ var (
 	// to a bad checksum.
 	ErrChecksumMismatch = errors.New("checksum mismatch")
 
-	// ErrUnknownAddressType describes an error where an address can not
+	// ErrUnknownAddressType describes an error where an address cannot be
 	// decoded as a specific address type due to the string encoding
-	// begining with an identifier byte unknown to any standard or
-	// registered (via chaincfg.Register) network.
-	ErrUnknownAddressType = errors.New("unknown address type")
+	// begining with an invalid identifier byte or unsupported version.
+	ErrUnknownAddressType = errors.New("unknown address type/version")
 )
 
-// Represents a Bitmessage address
+// Address represents a Bitmessage address.
 type Address struct {
 	Version uint64
 	Stream  uint64
@@ -119,7 +118,7 @@ func DecodeAddress(address string) (*Address, error) {
 			return nil, errors.New("version 4, the ripe length is invalid")
 		}
 	default:
-		return nil, errors.New("unsupported address version")
+		return nil, ErrUnknownAddressType
 	}
 
 	// prepend null bytes to make sure that the total ripe length is 20
@@ -130,10 +129,10 @@ func DecodeAddress(address string) (*Address, error) {
 	return addr, nil
 }
 
-// CalcDoubleHash calculates the double sha512 sum of the address, the first
+// calcDoubleHash calculates the double sha512 sum of the address, the first
 // half of which is used as private encryption key for the public key object
 // and the second half is used as a tag.
-func (addr *Address) CalcDoubleHash() []byte {
+func (addr *Address) calcDoubleHash() []byte {
 	var b bytes.Buffer
 	WriteVarInt(&b, addr.Version)
 	WriteVarInt(&b, addr.Stream)
@@ -142,8 +141,11 @@ func (addr *Address) CalcDoubleHash() []byte {
 	return DoubleSha512(b.Bytes())
 }
 
+// Tag calculates tag corresponding to the Bitmessage address. According to
+// protocol specifications, it is the second half of the double SHA-512 hash
+// of version, stream and ripe concatenated together.
 func (addr *Address) Tag() [32]byte {
 	var a [32]byte
-	copy(a[:], addr.CalcDoubleHash()[32:])
+	copy(a[:], addr.calcDoubleHash()[32:])
 	return a
 }
