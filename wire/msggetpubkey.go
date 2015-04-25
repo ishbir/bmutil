@@ -42,16 +42,19 @@ func (msg *MsgGetPubKey) Decode(r io.Reader) error {
 		return messageError("Decode", str)
 	}
 
-	if msg.Version >= TagGetPubKeyVersion {
+	switch msg.Version {
+	case TagGetPubKeyVersion:
 		msg.Tag, _ = NewShaHash(make([]byte, HashSize))
 		if err = readElement(r, msg.Tag); err != nil {
 			return err
 		}
-	} else {
+	case SimplePubKeyVersion, ExtendedPubKeyVersion:
 		msg.Ripe, _ = NewRipeHash(make([]byte, 20))
 		if err = readElement(r, msg.Ripe); err != nil {
 			return err
 		}
+	default:
+		return messageError("MsgGetPubKey.Decode", "unsupported pubkey version")
 	}
 
 	return err
@@ -66,14 +69,17 @@ func (msg *MsgGetPubKey) Encode(w io.Writer) error {
 		return err
 	}
 
-	if msg.Version >= TagGetPubKeyVersion {
+	switch msg.Version {
+	case TagGetPubKeyVersion:
 		if err = writeElement(w, msg.Tag); err != nil {
 			return err
 		}
-	} else {
+	case SimplePubKeyVersion, ExtendedPubKeyVersion:
 		if err = writeElement(w, msg.Ripe); err != nil {
 			return err
 		}
+	default:
+		return messageError("MsgGetPubKey.Decode", "unsupported pubkey version")
 	}
 
 	return err

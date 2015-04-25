@@ -107,14 +107,6 @@ func TestMsgWire(t *testing.T) {
 func TestMsgWireError(t *testing.T) {
 	wireErr := &wire.MessageError{}
 
-	// Ensure calling MsgVersion.Decode with a non *bytes.Buffer returns
-	// error.
-	fr := newFixedReader(0, []byte{})
-	if err := baseMsg.Decode(fr); err == nil {
-		t.Errorf("Did not received error when calling " +
-			"MsgVersion.Decode with non *bytes.Buffer")
-	}
-
 	wrongObjectTypeEncoded := make([]byte, len(baseMsgEncoded))
 	copy(wrongObjectTypeEncoded, baseMsgEncoded)
 	wrongObjectTypeEncoded[19] = 0

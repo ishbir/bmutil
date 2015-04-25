@@ -60,16 +60,12 @@ func (msg *MsgPubKey) Decode(r io.Reader) error {
 		return messageError("Decode", str)
 	}
 
-	if msg.Version >= EncryptedPubKeyVersion {
-		msg.Tag, _ = NewShaHash(make([]byte, HashSize))
-		if err = readElement(r, msg.Tag); err != nil {
-			return err
-		}
-		// The rest is the encrypted data, accessible only to the holder
-		// of the private key to whom it's addressed.
-		msg.Encrypted, err = ioutil.ReadAll(r)
-		return err
-	} else if msg.Version == ExtendedPubKeyVersion {
+	switch msg.Version {
+	case SimplePubKeyVersion:
+		msg.SigningKey, _ = NewPubKey(make([]byte, 64))
+		msg.EncryptionKey, _ = NewPubKey(make([]byte, 64))
+		return readElements(r, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	case ExtendedPubKeyVersion:
 		msg.SigningKey, _ = NewPubKey(make([]byte, 64))
 		msg.EncryptionKey, _ = NewPubKey(make([]byte, 64))
 		var sigLength uint64
@@ -95,11 +91,18 @@ func (msg *MsgPubKey) Decode(r io.Reader) error {
 		msg.Signature = make([]byte, sigLength)
 		_, err = io.ReadFull(r, msg.Signature)
 		return err
+	case EncryptedPubKeyVersion:
+		msg.Tag, _ = NewShaHash(make([]byte, HashSize))
+		if err = readElement(r, msg.Tag); err != nil {
+			return err
+		}
+		// The rest is the encrypted data, accessible only to those that know
+		// the address that the pubkey belongs to.
+		msg.Encrypted, err = ioutil.ReadAll(r)
+		return err
+	default:
+		return messageError("MsgPubKey.Decode", "unsupported PubKey version")
 	}
-
-	msg.SigningKey, _ = NewPubKey(make([]byte, 64))
-	msg.EncryptionKey, _ = NewPubKey(make([]byte, 64))
-	return readElements(r, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
 }
 
 // Encode encodes the receiver to w using the bitmessage protocol encoding.
@@ -111,16 +114,10 @@ func (msg *MsgPubKey) Encode(w io.Writer) error {
 		return err
 	}
 
-	if msg.Version >= EncryptedPubKeyVersion {
-		if err = writeElement(w, msg.Tag); err != nil {
-			return err
-		}
-		// The rest is the encrypted data, accessible only to the holder
-		// of the private key to whom it's addressed.
-		_, err = w.Write(msg.Encrypted)
-		return err
-
-	} else if msg.Version == ExtendedPubKeyVersion {
+	switch msg.Version {
+	case SimplePubKeyVersion:
+		return writeElements(w, msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	case ExtendedPubKeyVersion:
 		err = writeElements(w, msg.Behavior, msg.SigningKey, msg.EncryptionKey)
 		if err != nil {
 			return err
@@ -137,9 +134,17 @@ func (msg *MsgPubKey) Encode(w io.Writer) error {
 		}
 		_, err = w.Write(msg.Signature)
 		return err
+	case EncryptedPubKeyVersion:
+		if err = writeElement(w, msg.Tag); err != nil {
+			return err
+		}
+		// The rest is the encrypted data, accessible only to the holder
+		// of the private key to whom it's addressed.
+		_, err = w.Write(msg.Encrypted)
+		return err
+	default:
+		return messageError("MsgPubKey.Encode", "unsupported PubKey version")
 	}
-
-	return writeElements(w, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
 }
 
 // Command returns the protocol command string for the message. This is part
