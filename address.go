@@ -144,8 +144,8 @@ func (addr *Address) calcDoubleHash() []byte {
 // Tag calculates tag corresponding to the Bitmessage address. According to
 // protocol specifications, it is the second half of the double SHA-512 hash
 // of version, stream and ripe concatenated together.
-func (addr *Address) Tag() [32]byte {
-	var a [32]byte
-	copy(a[:], addr.calcDoubleHash()[32:])
+func (addr *Address) Tag() []byte {
+	var a = make([]byte, 32)
+	copy(a, addr.calcDoubleHash()[32:])
 	return a
 }

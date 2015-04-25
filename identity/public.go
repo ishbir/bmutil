@@ -1,13 +1,17 @@
 package identity
 
 import (
+	"errors"
+	"math"
+
 	"github.com/btcsuite/btcd/btcec"
 
 	"github.com/monetas/bmutil"
 	"github.com/monetas/bmutil/pow"
+	"github.com/monetas/bmutil/wire"
 )
 
-// Public contains the identity of the remote  user, which includes public
+// Public contains the identity of the remote user, which includes public
 // encryption and signing keys, POW parameters and the address that contains
 // information about stream number and address version.
 type Public struct {
@@ -35,4 +39,41 @@ func (id *Public) setDefaultPOWParams() {
 func (id *Public) hash() []byte {
 	return hash_helper(id.SigningKey.SerializeUncompressed(),
 		id.EncryptionKey.SerializeUncompressed())
+}
+
+// IdentityFromPubKeyMsg generates an *identity.Public object based on a
+// wire.MsgPubKey object.
+func IdentityFromPubKeyMsg(msg *wire.MsgPubKey) (*Public, error) {
+	if msg == nil {
+		return nil, errors.New("MsgPubKey is null")
+	}
+	switch msg.Version {
+	case wire.SimplePubKeyVersion, wire.ExtendedPubKeyVersion:
+		signingKey, err := msg.SigningKey.ToBtcec()
+		if err != nil {
+			return nil, err
+		}
+		encryptionKey, err := msg.EncryptionKey.ToBtcec()
+		if err != nil {
+			return nil, err
+		}
+
+		id := &Public{
+			EncryptionKey: encryptionKey,
+			SigningKey:    signingKey,
+		}
+		// set values appropriately; note that Go zero-initializes everything
+		// so if version is 2, we should have 0 in msg.ExtraBytes and
+		// msg.NonceTrials
+		id.ExtraBytes = uint64(math.Max(float64(pow.DefaultExtraBytes),
+			float64(msg.ExtraBytes)))
+		id.NonceTrialsPerByte = uint64(math.Max(float64(pow.DefaultNonceTrialsPerByte),
+			float64(msg.NonceTrials)))
+		id.CreateAddress(msg.Version, msg.StreamNumber)
+
+		return id, nil
+	}
+
+	// not defined for encrypted pubkey
+	return nil, errors.New("unsupported pubkey version")
 }
