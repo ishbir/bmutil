@@ -113,14 +113,6 @@ func TestPubKeyWire(t *testing.T) {
 func TestPubKeyWireError(t *testing.T) {
 	wireErr := &wire.MessageError{}
 
-	// Ensure calling MsgVersion.Decode with a non *bytes.Buffer returns
-	// error.
-	fr := newFixedReader(0, []byte{})
-	if err := basePubKey.Decode(fr); err == nil {
-		t.Errorf("Did not received error when calling " +
-			"MsgVersion.Decode with non *bytes.Buffer")
-	}
-
 	wrongObjectTypeEncoded := make([]byte, len(basePubKeyEncoded))
 	copy(wrongObjectTypeEncoded, basePubKeyEncoded)
 	wrongObjectTypeEncoded[19] = 0
@@ -144,6 +136,8 @@ func TestPubKeyWireError(t *testing.T) {
 		{basePubKey, basePubKeyEncoded, 21, io.ErrShortWrite, io.EOF},
 		// Force error object type validation.
 		{basePubKey, wrongObjectTypeEncoded, 52, io.ErrShortWrite, wireErr},
+		// Force error in version validation
+		{invalidPubKeyVersion, invalidPubKeyVersionEncoded, 22, wireErr, wireErr},
 		// Force error in Tag
 		{basePubKey, encryptedPubKeyEncoded, 22, io.ErrShortWrite, io.EOF},
 		// Force error in Pub Key
@@ -162,6 +156,7 @@ func TestPubKeyWireError(t *testing.T) {
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
+		//fmt.Printf("%d: %+v\n", i, *test.in)
 		// Encode to wire.format.
 		w := newFixedWriter(test.max)
 		err := test.in.Encode(w)
@@ -380,4 +375,23 @@ var encryptedPubKeyEncoded = []byte{
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // encrypted
+}
+
+var invalidPubKeyVersion = &wire.MsgPubKey{
+	Nonce:         123123,                   // 0x1e0f3
+	ExpiresTime:   time.Unix(0x495fab29, 0), // 2009-01-03 12:15:05 -0600 CST)
+	ObjectType:    wire.ObjectTypePubKey,
+	Version:       5,
+	StreamNumber:  1,
+	Behavior:      0,
+	SigningKey:    pubKey1,
+	EncryptionKey: pubKey2,
+}
+
+var invalidPubKeyVersionEncoded = []byte{
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x47, 0xd8, // 83928 nonce
+	0x00, 0x00, 0x00, 0x00, 0x49, 0x5f, 0xab, 0x29, // 64-bit Timestamp
+	0x00, 0x00, 0x00, 0x01, // Object Type
+	0x05, // Version
+	0x01, // Stream Number
 }

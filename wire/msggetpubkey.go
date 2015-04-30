@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"time"
-
-	"github.com/monetas/bmutil"
 )
 
 const (
@@ -31,8 +29,9 @@ type MsgGetPubKey struct {
 // Decode decodes r using the bitmessage protocol encoding into the receiver.
 // This is part of the Message interface implementation.
 func (msg *MsgGetPubKey) Decode(r io.Reader) error {
-	var sec int64
-	err := readElements(r, &msg.Nonce, &sec, &msg.ObjectType)
+	var err error
+	msg.Nonce, msg.ExpiresTime, msg.ObjectType, msg.Version,
+		msg.StreamNumber, err = DecodeMsgObjectHeader(r)
 	if err != nil {
 		return err
 	}
@@ -43,25 +42,19 @@ func (msg *MsgGetPubKey) Decode(r io.Reader) error {
 		return messageError("Decode", str)
 	}
 
-	msg.ExpiresTime = time.Unix(sec, 0)
-	if msg.Version, err = bmutil.ReadVarInt(r); err != nil {
-		return err
-	}
-
-	if msg.StreamNumber, err = bmutil.ReadVarInt(r); err != nil {
-		return err
-	}
-
-	if msg.Version >= TagGetPubKeyVersion {
+	switch msg.Version {
+	case TagGetPubKeyVersion:
 		msg.Tag, _ = NewShaHash(make([]byte, HashSize))
 		if err = readElement(r, msg.Tag); err != nil {
 			return err
 		}
-	} else {
+	case SimplePubKeyVersion, ExtendedPubKeyVersion:
 		msg.Ripe, _ = NewRipeHash(make([]byte, 20))
 		if err = readElement(r, msg.Ripe); err != nil {
 			return err
 		}
+	default:
+		return messageError("MsgGetPubKey.Decode", "unsupported pubkey version")
 	}
 
 	return err
@@ -70,27 +63,23 @@ func (msg *MsgGetPubKey) Decode(r io.Reader) error {
 // Encode encodes the receiver to w using the bitmessage protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgGetPubKey) Encode(w io.Writer) error {
-	err := writeElements(w, msg.Nonce, msg.ExpiresTime.Unix(), msg.ObjectType)
+	err := EncodeMsgObjectHeader(w, msg.Nonce, msg.ExpiresTime, msg.ObjectType,
+		msg.Version, msg.StreamNumber)
 	if err != nil {
 		return err
 	}
 
-	if err = bmutil.WriteVarInt(w, msg.Version); err != nil {
-		return err
-	}
-
-	if err = bmutil.WriteVarInt(w, msg.StreamNumber); err != nil {
-		return err
-	}
-
-	if msg.Version >= TagGetPubKeyVersion {
+	switch msg.Version {
+	case TagGetPubKeyVersion:
 		if err = writeElement(w, msg.Tag); err != nil {
 			return err
 		}
-	} else {
+	case SimplePubKeyVersion, ExtendedPubKeyVersion:
 		if err = writeElement(w, msg.Ripe); err != nil {
 			return err
 		}
+	default:
+		return messageError("MsgGetPubKey.Decode", "unsupported pubkey version")
 	}
 
 	return err

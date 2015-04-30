@@ -1,4 +1,4 @@
 /*
-Responsible for creation and management of user identities.
+Package identity is responsible for creation and management of user identities.
 */
 package identity

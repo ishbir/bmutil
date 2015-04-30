@@ -227,14 +227,6 @@ func TestVersionWire(t *testing.T) {
 func TestVersionWireErrors(t *testing.T) {
 	wireErr := &wire.MessageError{}
 
-	// Ensure calling MsgVersion.Decode with a non *bytes.Buffer returns
-	// error.
-	fr := newFixedReader(0, []byte{})
-	if err := baseVersion.Decode(fr); err == nil {
-		t.Errorf("Did not received error when calling " +
-			"MsgVersion.Decode with non *bytes.Buffer")
-	}
-
 	// Copy the base version and change the user agent to exceed max limits.
 	bvc := *baseVersion
 	exceedUAVer := &bvc
