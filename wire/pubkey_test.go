@@ -232,7 +232,7 @@ func TestToBtcec(t *testing.T) {
 		bmPubKey, _ := wire.NewPubKey(test.pubKeyBytes[1:])
 		btcPubKeyExp, btcErrExp := btcec.ParsePubKey(test.pubKeyBytes, btcec.S256())
 		btcPubKeyTest, btcErrTest := bmPubKey.ToBtcec()
-		
+
 		if btcErrExp != nil {
 			if btcErrTest == nil {
 				t.Errorf("Error case %d: expecting error %s, but no error was returned. ", test_case, btcErrExp)
