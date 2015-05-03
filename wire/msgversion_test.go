@@ -1,3 +1,10 @@
+// Originally derived from: btcsuite/btcd/wire/msgversion_test.go
+// Copyright (c) 2013-2015 Conformal Systems LLC.
+
+// Copyright (c) 2015 Monetas
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
 package wire_test
 
 import (
@@ -226,14 +233,6 @@ func TestVersionWire(t *testing.T) {
 // decode of MsgGetHeaders to confirm error paths work correctly.
 func TestVersionWireErrors(t *testing.T) {
 	wireErr := &wire.MessageError{}
-
-	// Ensure calling MsgVersion.Decode with a non *bytes.Buffer returns
-	// error.
-	fr := newFixedReader(0, []byte{})
-	if err := baseVersion.Decode(fr); err == nil {
-		t.Errorf("Did not received error when calling " +
-			"MsgVersion.Decode with non *bytes.Buffer")
-	}
 
 	// Copy the base version and change the user agent to exceed max limits.
 	bvc := *baseVersion
