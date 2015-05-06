@@ -1,3 +1,7 @@
+// Copyright (c) 2015 Monetas
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
 package wire_test
 
 import (
@@ -94,14 +98,6 @@ func TestUnknownObjectWire(t *testing.T) {
 // TestUnknownObjectWireError tests the MsgUnknownObject error paths.
 func TestUnknownObjectWireError(t *testing.T) {
 	wireErr := &wire.MessageError{}
-
-	// Ensure calling MsgVersion.Decode with a non *bytes.Buffer returns
-	// error.
-	fr := newFixedReader(0, []byte{})
-	if err := baseMsg.Decode(fr); err == nil {
-		t.Errorf("Did not receive error when calling " +
-			"MsgVersion.Decode with non *bytes.Buffer")
-	}
 
 	wrongObjectTypeEncoded := make([]byte, len(baseMsgEncoded))
 	copy(wrongObjectTypeEncoded, baseMsgEncoded)

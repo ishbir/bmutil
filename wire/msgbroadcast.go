@@ -1,3 +1,7 @@
+// Copyright (c) 2015 Monetas
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
 package wire
 
 import (
@@ -5,8 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"time"
-
-	"github.com/monetas/bmutil"
 )
 
 const (
@@ -42,9 +44,10 @@ type MsgBroadcast struct {
 // Decode decodes r using the bitmessage protocol encoding into the receiver.
 // This is part of the Message interface implementation.
 func (msg *MsgBroadcast) Decode(r io.Reader) error {
-	var sec int64
 	var err error
-	if err := readElements(r, &msg.Nonce, &sec, &msg.ObjectType); err != nil {
+	msg.Nonce, msg.ExpiresTime, msg.ObjectType, msg.Version,
+		msg.StreamNumber, err = DecodeMsgObjectHeader(r)
+	if err != nil {
 		return err
 	}
 
@@ -52,15 +55,6 @@ func (msg *MsgBroadcast) Decode(r io.Reader) error {
 		str := fmt.Sprintf("Object Type should be %d, but is %d",
 			ObjectTypeBroadcast, msg.ObjectType)
 		return messageError("Decode", str)
-	}
-
-	msg.ExpiresTime = time.Unix(sec, 0)
-	if msg.Version, err = bmutil.ReadVarInt(r); err != nil {
-		return err
-	}
-
-	if msg.StreamNumber, err = bmutil.ReadVarInt(r); err != nil {
-		return err
 	}
 
 	if msg.Version >= TagBroadcastVersion {
@@ -78,17 +72,9 @@ func (msg *MsgBroadcast) Decode(r io.Reader) error {
 // Encode encodes the receiver to w using the bitmessage protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgBroadcast) Encode(w io.Writer) error {
-	var err error
-	err = writeElements(w, msg.Nonce, msg.ExpiresTime.Unix(), msg.ObjectType)
+	err := EncodeMsgObjectHeader(w, msg.Nonce, msg.ExpiresTime, msg.ObjectType,
+		msg.Version, msg.StreamNumber)
 	if err != nil {
-		return err
-	}
-
-	if err = bmutil.WriteVarInt(w, msg.Version); err != nil {
-		return err
-	}
-
-	if err = bmutil.WriteVarInt(w, msg.StreamNumber); err != nil {
 		return err
 	}
 
