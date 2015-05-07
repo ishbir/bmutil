@@ -516,3 +516,78 @@ func TestWriteMessageWireErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodeMessageAndMessageHash(t *testing.T) {
+	expires := time.Unix(3640198677, 0)
+
+	tests := []struct {
+		msg           wire.Message
+		errorExpected bool
+		expectedData  []byte
+		expectedHash  *wire.ShaHash
+	}{
+		{ // Invalid case
+			nil,
+			true,
+			nil,
+			nil,
+		},
+		{ // Valid case: a pub key object message.
+			// We don't need to try every different kind of message since they have their own
+			// individual Encode methods.
+			wire.NewMsgPubKey(543, expires, 4, 1, 2, &pubkey[0], &pubkey[1], 3, 5,
+				[]byte{4, 5, 6, 7, 8, 9, 10}, &shahash, []byte{11, 12, 13, 14, 15, 16, 17, 18}),
+			false,
+			[]byte{
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x1f,
+				0x00, 0x00, 0x00, 0x00, 0xd8, 0xf9, 0x06, 0x15,
+				0x00, 0x00, 0x00, 0x01, 0x04, 0x01, 0x62, 0x63,
+				0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x6b,
+				0x6c, 0x6d, 0x6e, 0x6f, 0x70, 0x71, 0x72, 0x73,
+				0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x7b,
+				0x7c, 0x7d, 0x7e, 0x7f, 0x80, 0x81, 0x0b, 0x0c,
+				0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12},
+			func() *wire.ShaHash {
+				sha, _ := wire.NewShaHash([]byte{
+					0xaa, 0xa5, 0x88, 0xd4, 0x7a, 0xa2, 0x50, 0xfb,
+					0x64, 0x46, 0x38, 0x08, 0x57, 0xa0, 0x6f, 0x9b,
+					0xf7, 0x56, 0xf8, 0xb2, 0xd2, 0xe8, 0x59, 0xdf,
+					0xc7, 0x4b, 0x64, 0x85, 0x47, 0x96, 0xe2, 0x80})
+				return sha
+			}(),
+		},
+	}
+
+	for i, test := range tests {
+		encoded, errEncode := wire.EncodeMessage(test.msg)
+		hash, errHash := wire.MessageHash(test.msg)
+
+		if test.errorExpected {
+			if errEncode == nil {
+				t.Errorf("On test case %d, no error returned when expected encoding message.", i)
+			}
+
+			if errHash == nil {
+				t.Errorf("On test case %d, no error returned when expected hashing message.", i)
+			}
+
+			continue
+		}
+
+		if errEncode != nil {
+			t.Errorf("On test case %d, error returned encoding message: %s", i, errEncode)
+		}
+
+		if errHash != nil {
+			t.Errorf("On test case %d, error returned hashing message: %s", i, errHash)
+		}
+
+		if !bytes.Equal(test.expectedData, encoded) {
+			t.Errorf("On test case %d, expected %v, got %v: ", i, spew.Sdump(test.expectedData), spew.Sdump(encoded))
+		}
+
+		if !test.expectedHash.IsEqual(hash) {
+			t.Errorf("On test case %d, expected %v, got %v: ", i, spew.Sdump(test.expectedHash), spew.Sdump(hash))
+		}
+	}
+}
