@@ -7,6 +7,7 @@ package wire
 import (
 	"io"
 	"time"
+	"bytes"
 
 	"github.com/monetas/bmutil"
 )
@@ -57,7 +58,7 @@ func (t ObjectType) String() string {
 // that order. Read Protocol Specifications for more information.
 func EncodeMsgObjectHeader(w io.Writer, nonce uint64, expiresTime time.Time,
 	objectType ObjectType, version uint64, streamNumber uint64) error {
-	err := writeElements(w, nonce, expiresTime.Unix(), objectType)
+	err := writeElements(w, nonce, expiresTime, objectType)
 	if err != nil {
 		return err
 	}
@@ -76,13 +77,11 @@ func EncodeMsgObjectHeader(w io.Writer, nonce uint64, expiresTime time.Time,
 func DecodeMsgObjectHeader(r io.Reader) (nonce uint64, expiresTime time.Time,
 	objectType ObjectType, version uint64, streamNumber uint64, err error) {
 
-	var sec int64
-	err = readElements(r, &nonce, &sec, &objectType)
+	err = readElements(r, &nonce, &expiresTime, &objectType)
 	if err != nil {
 		return
 	}
 
-	expiresTime = time.Unix(sec, 0)
 	if version, err = bmutil.ReadVarInt(r); err != nil {
 		return
 	}
@@ -91,4 +90,27 @@ func DecodeMsgObjectHeader(r io.Reader) (nonce uint64, expiresTime time.Time,
 		return
 	}
 	return
+}
+
+// DecodeMsgObject takes a byte array and turns it into an object message. 
+func DecodeMsgObject(obj []byte) (Message, error) {
+	_, _, objType, _, _, err := DecodeMsgObjectHeader(bytes.NewReader(obj))
+	if err != nil {
+		return nil, err
+	}
+	var msg Message
+	switch objType {
+	case ObjectTypeGetPubKey:
+		msg = &MsgGetPubKey{}
+	case ObjectTypePubKey:
+		msg = &MsgPubKey{}
+	case ObjectTypeMsg:
+		msg = &MsgMsg{}
+	case ObjectTypeBroadcast:
+		msg = &MsgBroadcast{}
+	default:
+		msg = &MsgUnknownObject{}
+	}
+	err = msg.Decode(bytes.NewReader(obj))
+	return msg, err
 }
