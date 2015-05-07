@@ -38,10 +38,18 @@ const (
 // obStrings is a map of service flags back to their constant names for pretty
 // printing.
 var obStrings = map[ObjectType]string{
-	ObjectTypeGetPubKey: "GETPUBKEY",
-	ObjectTypePubKey:    "PUBKEY",
-	ObjectTypeMsg:       "MSG",
-	ObjectTypeBroadcast: "BROADCAST",
+	ObjectTypeGetPubKey: "Getpubkey",
+	ObjectTypePubKey:    "Pubkey",
+	ObjectTypeMsg:       "Msg",
+	ObjectTypeBroadcast: "Broadcast",
+}
+
+func (t ObjectType) String() string {
+	if t >= ObjectType(4) {
+		return "Unknown"
+	} else {
+		return obStrings[t]
+	}
 }
 
 // EncodeMsgObjectHeader encodes the object header to the given writer. Object
