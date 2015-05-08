@@ -1,3 +1,7 @@
+// Copyright (c) 2015 Monetas
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
 package wire_test
 
 import (
@@ -146,14 +150,6 @@ func TestGetPubKeyWire(t *testing.T) {
 func TestGetPubKeyWireError(t *testing.T) {
 	wireErr := &wire.MessageError{}
 
-	// Ensure calling MsgVersion.Decode with a non *bytes.Buffer returns
-	// error.
-	fr := newFixedReader(0, []byte{})
-	if err := baseVersion.Decode(fr); err == nil {
-		t.Errorf("Did not received error when calling " +
-			"MsgVersion.Decode with non *bytes.Buffer")
-	}
-
 	tests := []struct {
 		in       *wire.MsgGetPubKey // Value to encode
 		buf      []byte             // Wire encoding
@@ -176,7 +172,9 @@ func TestGetPubKeyWireError(t *testing.T) {
 		// Force error in tag.
 		{tagGetPubKey, tagGetPubKeyEncoded, 22, io.ErrShortWrite, io.EOF},
 		// Force error object type validation.
-		{baseGetPubKey, basePubKeyEncoded, 20, io.ErrShortWrite, wireErr},
+		{baseGetPubKey, basePubKeyEncoded, 22, io.ErrShortWrite, wireErr},
+		// Force invalid pubkey version error.
+		{invalidGetPubKeyVersion, invalidGetPubKeyVersionEncoded, 22, wireErr, wireErr},
 	}
 
 	t.Logf("Running %d tests", len(tests))
@@ -271,4 +269,27 @@ var tagGetPubKeyEncoded = []byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Ripe
+}
+
+// invalidVersion is a getpubkey message with unsupported version
+var invalidGetPubKeyVersion = &wire.MsgGetPubKey{
+	Nonce:        123123,                   // 0x1e0f3
+	ExpiresTime:  time.Unix(0x495fab29, 0), // 2009-01-03 12:15:05 -0600 CST)
+	ObjectType:   wire.ObjectTypeGetPubKey,
+	Version:      5,
+	StreamNumber: 1,
+	Ripe:         &wire.RipeHash{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	Tag:          nil,
+}
+
+// invalidVersionEncoded is an encoded getpubkey message with unsupported version
+var invalidGetPubKeyVersionEncoded = []byte{
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe0, 0xf3, // Nonce
+	0x00, 0x00, 0x00, 0x00, 0x49, 0x5f, 0xab, 0x29, // 64-bit Timestamp
+	0x00, 0x00, 0x00, 0x00, // object type
+	0x05, // Version
+	0x01, // Stream Number
+	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, // Ripe
 }

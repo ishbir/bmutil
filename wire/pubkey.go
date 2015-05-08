@@ -1,9 +1,15 @@
+// Copyright (c) 2015 Monetas
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
 package wire
 
 import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/btcsuite/btcd/btcec"
 )
 
 // PubKeySize is the size of array used to store uncompressed public keys. Note
@@ -22,34 +28,44 @@ var ErrPubKeyStrSize = fmt.Errorf("string length must be %v chars", MaxPubKeyStr
 type PubKey [PubKeySize]byte
 
 // String returns the PubKey as a hexadecimal string.
-func (hash PubKey) String() string {
-	return hex.EncodeToString(hash[:])
+func (pubkey PubKey) String() string {
+	return hex.EncodeToString(pubkey[:])
 }
 
 // Bytes returns the bytes which represent the hash as a byte slice.
-func (hash *PubKey) Bytes() []byte {
-	newHash := make([]byte, PubKeySize)
-	copy(newHash, hash[:])
+func (pubkey *PubKey) Bytes() []byte {
+	newPubkey := make([]byte, PubKeySize)
+	copy(newPubkey, pubkey[:])
 
-	return newHash
+	return newPubkey
 }
 
 // SetBytes sets the bytes which represent the hash. An error is returned if
 // the number of bytes passed in is not PubKeySize.
-func (hash *PubKey) SetBytes(newHash []byte) error {
-	nhlen := len(newHash)
+func (pubkey *PubKey) SetBytes(newPubkey []byte) error {
+	nhlen := len(newPubkey)
 	if nhlen != PubKeySize {
 		return fmt.Errorf("invalid pub key length of %v, want %v", nhlen,
 			PubKeySize)
 	}
-	copy(hash[:], newHash[0:PubKeySize])
+	copy(pubkey[:], newPubkey[0:PubKeySize])
 
 	return nil
 }
 
-// IsEqual returns true if target is the same as hash.
-func (hash *PubKey) IsEqual(target *PubKey) bool {
-	return bytes.Equal(hash[:], target[:])
+// IsEqual returns true if target is the same as the pubkey.
+func (pubkey *PubKey) IsEqual(target *PubKey) bool {
+	return bytes.Equal(pubkey[:], target[:])
+}
+
+// ToBtcec converts PubKey to btcec.PublicKey so that it can be used for
+// cryptographic operations like encryption/signature verification.
+func (pubkey *PubKey) ToBtcec() (key *btcec.PublicKey, err error) {
+	b := make([]byte, PubKeySize+1)
+	b[0] = 0x04 // uncompressed key
+	copy(b[1:PubKeySize+1], pubkey.Bytes())
+
+	return btcec.ParsePubKey(b, btcec.S256())
 }
 
 // NewPubKey returns a new PubKey from a byte slice. An error is returned if
