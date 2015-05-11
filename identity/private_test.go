@@ -124,3 +124,54 @@ func TestNewDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestErrors(t *testing.T) {
+	// NewDeterministic
+	_, err := identity.NewDeterministic("abcabc", 0) // 0 initial zeros
+	if err == nil {
+		t.Error("NewDeterministic: 0 initial zeros, got no error")
+	}
+
+	// ImportWIF
+
+	// invalid address
+	_, err = identity.ImportWIF("BM-9tSxgK6q4X6bNdEbyMRgGBcfnFC3MoW3Bp5", "",
+		"", 1000, 1000)
+	if err == nil {
+		t.Error("ImportWIF: invalid address, got no error")
+	}
+
+	// invalid signing key
+	_, err = identity.ImportWIF("BM-2cWgt4u3shyzQ8vP56uzMSe2iajy8r4Hxe",
+		"sd5f48erdfoiopadsfa5d6sf405", "", 1000, 1000)
+	if err == nil {
+		t.Error("ImportWIF: invalid signing key, got no error")
+	}
+
+	// invalid encryption key
+	_, err = identity.ImportWIF("BM-2cV9RshwouuVKWLBoyH5cghj3kMfw5G7BJ",
+		"5KHBtHsy9eWz6fFZzJCNMVVJ3r4m7AbuzYRE3hwkKZ2H7BEZrGU",
+		"sd5f48erdfoiopadsfa5d6sf405", 1000, 1000)
+	if err == nil {
+		t.Error("ImportWIF: invalid encryption key, got no error")
+	}
+
+	// address does not match
+	_, err = identity.ImportWIF("BM-2DB6AzjZvzM8NkS3HMYWMP9R1Rt778mhN8",
+		"5JXVjG9CNFh17kCawPxCtekJBei9gv6hzmawBGFkuciTCMaxeJD",
+		"5KQC3fHBCUNyBoXeEpgphrqa314Cvy4beS21Zg1rvrj1FY3Tgqb", 1000, 1000)
+	if err == nil {
+		t.Error("ImportWIF: address mismatch, got no error")
+	}
+
+	// ExportWIF
+	id, err := identity.ImportWIF("BM-2cU2a336vzu7SEuPPa1UTWgrVg8mWiqzpm",
+		"5Ke7eXNJmQYpdeVckePnRWEu5TwPrE9BsZfZZQGGb1jzor9fXit",
+		"5HwY8h5skGnaFaQZZv9UzMJdJbdtuZBjXhsSyDK9msGernqPRDt", 1000, 1000)
+
+	id.Address.Version = 5 // set invalid version
+	_, _, _, err = id.ExportWIF()
+	if err == nil {
+		t.Error("ExportWIF: invalid address, got no error")
+	}
+}

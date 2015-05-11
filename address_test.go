@@ -73,3 +73,59 @@ func TestDecodeAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestAddressErrors(t *testing.T) {
+	// Address.Encode
+	addr := bmutil.Address{Version: 1, Stream: 1, Ripe: [20]byte{0, 21, 243,
+		247, 60, 104, 72, 169, 139, 195, 72, 196, 85, 228, 167, 173, 177, 1,
+		165, 242}}
+	str, err := addr.Encode()
+	if str != "" {
+		t.Error("EncodeAddress: address string due to error not empty")
+	}
+	if err != bmutil.ErrUnknownAddressType {
+		t.Errorf("EncodeAddress: unexpected error, expected UnknownAddressType"+
+			" got %v", err)
+	}
+
+	// Address.Decode
+	decodeAddressErrorAddresses := []string{
+		// data too short
+		"BM-554ddssdf",
+		// checksum mismatch
+		"BM-2DBXxtaBSV37DsHjN978mRiMbX5rdKNvJ2",
+		// invalid v3 address, ripe length < 18
+		"BM-4biUVd9M1g46fES4Ggz8ktmnfoJndYA",
+		// invalid v3 address, ripe length > 20
+		"BM-QYkxMN39XYE4WtRxHMGNPxLbcv4nWGSRtVdH",
+		// invalid v4 address, null bytes in front
+		"BM-2cShcu4VoVChUUc9GQnFrJtRe9NdmEoBUq",
+		// invalid v4 address, ripe length < 4
+		"BM-3xSpfkKJqnFf",
+		// invalid v4 address, ripe length > 20
+		"BM-YPRfqu7T4fXxxhEfAWCdpebVYRm7mkwr3M4u",
+		// invalid address version
+		"BM-9tSxgK6q4X6bNdEbyMRgGBcfnFC3MoW3Bp5",
+	}
+
+	for i, addr := range decodeAddressErrorAddresses {
+		_, err := bmutil.DecodeAddress(addr)
+		if err == nil {
+			t.Errorf("DecodeAddress: for test #%d expected error got none", i)
+		}
+	}
+}
+
+// Test Tag, PrivateKey and PrivateKeySingleHash
+func TestCalcHash(t *testing.T) {
+	for _, pair := range addressTests {
+		addr, err := bmutil.DecodeAddress(pair.addrString)
+		if err != nil {
+			t.Errorf("while decoding %s, got error %v", pair.addrString, err)
+		}
+		// TODO
+		addr.PrivateKeySingleHash()
+		addr.PrivateKey()
+		addr.Tag()
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/base58"
 )
 
@@ -100,10 +101,7 @@ func DecodeAddress(address string) (*Address, error) {
 	}
 
 	ripe := make([]byte, buf.Len()-4) // exclude bytes already read and checksum
-	n, err := buf.Read(ripe)
-	if n != len(ripe) || err != nil {
-		return nil, err
-	}
+	buf.Read(ripe)                    // this can never cause an error
 
 	switch addr.Version {
 	case 2:
@@ -133,16 +131,22 @@ func DecodeAddress(address string) (*Address, error) {
 	return addr, nil
 }
 
-// calcDoubleHash calculates the double sha512 sum of the address, the first
-// half of which is used as private encryption key for the public key object
-// and the second half is used as a tag.
-func (addr *Address) calcDoubleHash() []byte {
+// calcSingleHash calculates the sha512 sum of the address, the first half of
+// which is used as private encryption key for v2 and v3 broadcasts.
+func (addr *Address) calcSingleHash() []byte {
 	var b bytes.Buffer
 	WriteVarInt(&b, addr.Version)
 	WriteVarInt(&b, addr.Stream)
 	b.Write(addr.Ripe[:])
 
-	return DoubleSha512(b.Bytes())
+	return Sha512(b.Bytes())
+}
+
+// calcDoubleHash calculates the double sha512 sum of the address, the first
+// half of which is used as private encryption key for the public key object
+// and the second half is used as a tag.
+func (addr *Address) calcDoubleHash() []byte {
+	return Sha512(addr.calcSingleHash())
 }
 
 // Tag calculates tag corresponding to the Bitmessage address. According to
@@ -152,4 +156,25 @@ func (addr *Address) Tag() []byte {
 	var a = make([]byte, 32)
 	copy(a, addr.calcDoubleHash()[32:])
 	return a
+}
+
+// PrivateKey generates the decryption private key used to decrypt v4 pubkeys
+// and v5 broadcasts originating from the address. Such objects are encrypted
+// with the public key corresponding to this private key as the target key. It
+// is the first half of the double SHA-512 hash of version, stream and ripe
+// concatenated together.
+func (addr *Address) PrivateKey() *btcec.PrivateKey {
+	pk := addr.calcDoubleHash()[:32]
+	privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), pk)
+	return privKey
+}
+
+// PrivateKeySingleHash generates the decryption private key used to decrypt v4
+// broadcasts originating from the address. They are encrypted with the public
+// key corresponding to this private key as the target key. It is the first half
+// of the SHA-512 hash of version, stream and ripe concatenated together.
+func (addr *Address) PrivateKeySingleHash() *btcec.PrivateKey {
+	pk := addr.calcSingleHash()[:32]
+	privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), pk)
+	return privKey
 }

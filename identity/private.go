@@ -153,13 +153,20 @@ func ImportWIF(address, signingKeyWif, encryptionKeyWif string,
 		return nil, err
 	}
 
-	return &Private{
+	priv := &Private{
 		Address:            *addr,
 		SigningKey:         privSigningKey,
 		EncryptionKey:      privEncryptionKey,
 		NonceTrialsPerByte: nonceTrials,
 		ExtraBytes:         extraBytes,
-	}, nil
+	}
+
+	// check if everything is valid
+	priv.CreateAddress(addr.Version, addr.Stream) // CreateAddress generates ripe
+	if !bytes.Equal(priv.Address.Ripe[:], addr.Ripe[:]) {
+		return nil, errors.New("address does not correspond to private keys")
+	}
+	return priv, nil
 }
 
 // ExportWIF exports a Private identity to WIF for storage on disk or use by
