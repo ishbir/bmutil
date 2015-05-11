@@ -48,9 +48,6 @@ func (id *Public) hash() []byte {
 // IdentityFromPubKeyMsg generates an *identity.Public object based on a
 // wire.MsgPubKey object.
 func IdentityFromPubKeyMsg(msg *wire.MsgPubKey) (*Public, error) {
-	if msg == nil {
-		return nil, errors.New("MsgPubKey is null")
-	}
 	switch msg.Version {
 	case wire.SimplePubKeyVersion, wire.ExtendedPubKeyVersion:
 		signingKey, err := msg.SigningKey.ToBtcec()
