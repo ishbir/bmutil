@@ -9,6 +9,7 @@ package wire
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"unicode/utf8"
@@ -334,4 +335,27 @@ func ReadMessageN(r io.Reader, bmnet BitmessageNet) (int, Message, []byte, error
 func ReadMessage(r io.Reader, bmnet BitmessageNet) (Message, []byte, error) {
 	_, msg, buf, err := ReadMessageN(r, bmnet)
 	return msg, buf, err
+}
+
+// EncodeMessage takes a message and returns a representation of it as a byte array
+// as the message would appear in the database. This array is missing the the standard
+// bitmessage header that goes along with every message sent over the p2p connection.
+func EncodeMessage(msg Message) ([]byte, error) {
+	if msg == nil {
+		return nil, errors.New("Nil input")
+	}
+	buf := &bytes.Buffer{}
+	msg.Encode(buf)
+	return buf.Bytes(), nil
+}
+
+// MessageHash takes a message and returns its hash (double sha512, as per the
+// bitmessage protocol) as it would be indexed in the database.
+func MessageHash(msg Message) (*ShaHash, error) {
+	data, err := EncodeMessage(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewShaHash(bmutil.CalcInventoryHash(data))
 }
