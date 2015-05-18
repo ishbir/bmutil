@@ -13,6 +13,7 @@ import (
 	"io"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/monetas/bmutil/wire"
@@ -120,6 +121,14 @@ func TestElementWire(t *testing.T) {
 		{
 			wire.BitmessageNet(wire.MainNet),
 			[]byte{0xe9, 0xbe, 0xb4, 0xd9},
+		},
+		{
+			wire.ObjectTypePubKey,
+			[]byte{0x00, 0x00, 0x0, 0x01},
+		},
+		{
+			time.Unix(0x495fab29, 0), // 2009-01-03 12:15:05 -0600 CST)
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x49, 0x5f, 0xab, 0x29},
 		},
 		// Type not supported by the "fast" path and requires reflection.
 		{

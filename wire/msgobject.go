@@ -5,6 +5,7 @@
 package wire
 
 import (
+	"bytes"
 	"io"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	// The maximum payload of object message can be = 2^18 bytes.
+	// MaxPayloadOfMsgObject is the the maximum payload of object message = 2^18 bytes.
 	// (not to be confused with the object payload)
 	MaxPayloadOfMsgObject = 262144
 )
@@ -47,9 +48,9 @@ var obStrings = map[ObjectType]string{
 func (t ObjectType) String() string {
 	if t >= ObjectType(4) {
 		return "Unknown"
-	} else {
-		return obStrings[t]
 	}
+
+	return obStrings[t]
 }
 
 // EncodeMsgObjectHeader encodes the object header to the given writer. Object
@@ -57,7 +58,7 @@ func (t ObjectType) String() string {
 // that order. Read Protocol Specifications for more information.
 func EncodeMsgObjectHeader(w io.Writer, nonce uint64, expiresTime time.Time,
 	objectType ObjectType, version uint64, streamNumber uint64) error {
-	err := writeElements(w, nonce, expiresTime.Unix(), objectType)
+	err := writeElements(w, nonce, expiresTime, objectType)
 	if err != nil {
 		return err
 	}
@@ -76,13 +77,11 @@ func EncodeMsgObjectHeader(w io.Writer, nonce uint64, expiresTime time.Time,
 func DecodeMsgObjectHeader(r io.Reader) (nonce uint64, expiresTime time.Time,
 	objectType ObjectType, version uint64, streamNumber uint64, err error) {
 
-	var sec int64
-	err = readElements(r, &nonce, &sec, &objectType)
+	err = readElements(r, &nonce, &expiresTime, &objectType)
 	if err != nil {
 		return
 	}
 
-	expiresTime = time.Unix(sec, 0)
 	if version, err = bmutil.ReadVarInt(r); err != nil {
 		return
 	}
@@ -91,4 +90,15 @@ func DecodeMsgObjectHeader(r io.Reader) (nonce uint64, expiresTime time.Time,
 		return
 	}
 	return
+}
+
+// DecodeMsgObject takes a byte array and turns it into an object message.
+func DecodeMsgObject(obj []byte) (Message, error) {
+	msg, err := detectMessageType(obj, CmdObject)
+	if err != nil {
+		return nil, err
+	}
+
+	err = msg.Decode(bytes.NewReader(obj))
+	return msg, err
 }

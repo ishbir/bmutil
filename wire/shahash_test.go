@@ -53,6 +53,10 @@ func TestShaHash(t *testing.T) {
 			hash, shaHash)
 	}
 
+	if hash.IsEqual(nil) {
+		t.Errorf("IsEqual: should return false for nil input.")
+	}
+
 	// Set hash from byte slice and ensure contents match.
 	err = hash.SetBytes(shaHash.Bytes())
 	if err != nil {

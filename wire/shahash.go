@@ -56,6 +56,9 @@ func (hash *ShaHash) SetBytes(newHash []byte) error {
 
 // IsEqual returns true if target is the same as hash.
 func (hash *ShaHash) IsEqual(target *ShaHash) bool {
+	if target == nil {
+		return false
+	}
 	return bytes.Equal(hash[:], target[:])
 }
 

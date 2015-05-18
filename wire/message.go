@@ -214,6 +214,45 @@ func WriteMessage(w io.Writer, msg Message, bmnet BitmessageNet) error {
 	return err
 }
 
+// detectMessageType takes the byte representation of a message payload and returns
+// an empty message of the correct type that can then be used to decode the entire message.
+func detectMessageType(payload []byte, command string) (Message, error) {
+	// Create struct of appropriate message type based on the command.
+	var msg Message
+	var err error
+
+	if command == CmdObject {
+		// Handle objects differently because we need to read some data to
+		// know what message type it is
+		_, _, objType, _, _, err := DecodeMsgObjectHeader(bytes.NewReader(payload))
+		if err != nil {
+			return nil, messageError("ReadMessage",
+				err.Error())
+		}
+
+		switch objType {
+		case ObjectTypeGetPubKey:
+			msg = &MsgGetPubKey{}
+		case ObjectTypePubKey:
+			msg = &MsgPubKey{}
+		case ObjectTypeMsg:
+			msg = &MsgMsg{}
+		case ObjectTypeBroadcast:
+			msg = &MsgBroadcast{}
+		default:
+			msg = &MsgUnknownObject{}
+		}
+	} else {
+		msg, err = makeEmptyMessage(command)
+		if err != nil {
+			return nil, messageError("ReadMessage",
+				err.Error())
+		}
+	}
+
+	return msg, nil
+}
+
 // ReadMessageN reads, validates, and parses the next bitmessage Message from r for
 // the provided protocol version and bitmessage network.  It returns the number of
 // bytes read in addition to the parsed Message and raw bytes which comprise the
@@ -263,39 +302,9 @@ func ReadMessageN(r io.Reader, bmnet BitmessageNet) (int, Message, []byte, error
 		return totalBytes, nil, nil, err
 	}
 
-	// Create struct of appropriate message type based on the command.
-	var msg Message
-
-	if command == CmdObject {
-		// Handle objects differently because we need to read some data to
-		// know what message type it is
-		var nonce uint64
-		var sec int64
-		var objType ObjectType
-		err := readElements(bytes.NewReader(payload), &nonce, &sec, &objType)
-		if err != nil {
-			return totalBytes, nil, nil, messageError("ReadMessage",
-				err.Error())
-		}
-
-		switch objType {
-		case ObjectTypeGetPubKey:
-			msg = &MsgGetPubKey{}
-		case ObjectTypePubKey:
-			msg = &MsgPubKey{}
-		case ObjectTypeMsg:
-			msg = &MsgMsg{}
-		case ObjectTypeBroadcast:
-			msg = &MsgBroadcast{}
-		default:
-			msg = &MsgUnknownObject{}
-		}
-	} else {
-		msg, err = makeEmptyMessage(command)
-		if err != nil {
-			return totalBytes, nil, nil, messageError("ReadMessage",
-				err.Error())
-		}
+	msg, err := detectMessageType(payload, command)
+	if err != nil {
+		return totalBytes, nil, nil, err
 	}
 
 	// Check for maximum length based on the message type as a protection
@@ -334,4 +343,21 @@ func ReadMessageN(r io.Reader, bmnet BitmessageNet) (int, Message, []byte, error
 func ReadMessage(r io.Reader, bmnet BitmessageNet) (Message, []byte, error) {
 	_, msg, buf, err := ReadMessageN(r, bmnet)
 	return msg, buf, err
+}
+
+// EncodeMessage takes a message and returns a representation of it as a byte
+// array as the message would appear in the database. This array is missing the
+// the standard bitmessage header that goes along with every message sent over
+// the p2p connection.
+func EncodeMessage(msg Message) []byte {
+	buf := &bytes.Buffer{}
+	msg.Encode(buf)
+	return buf.Bytes()
+}
+
+// MessageHash takes a message and returns its hash (double sha512, as per the
+// bitmessage protocol) as it would be indexed in the database.
+func MessageHash(msg Message) *ShaHash {
+	hash, _ := NewShaHash(bmutil.CalcInventoryHash(EncodeMessage(msg)))
+	return hash
 }
