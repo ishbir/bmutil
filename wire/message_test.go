@@ -70,6 +70,7 @@ func TestMessage(t *testing.T) {
 	msgVersionExpected := wire.NewMsgVersion(meExpected, youExpected, 123123, []uint32{1})
 
 	msgVerack := wire.NewMsgVerAck()
+	msgPong := wire.NewMsgPong()
 	msgAddr := wire.NewMsgAddr()
 	msgInv := wire.NewMsgInv()
 	msgGetData := wire.NewMsgGetData()
@@ -109,6 +110,7 @@ func TestMessage(t *testing.T) {
 	}{
 		{msgVersion, msgVersionExpected, wire.MainNet, 119},
 		{msgVerack, msgVerack, wire.MainNet, 24},
+		{msgPong, msgPong, wire.MainNet, 24},
 		{msgAddr, msgAddr, wire.MainNet, 25},
 		{msgInv, msgInv, wire.MainNet, 25},
 		{msgGetData, msgGetData, wire.MainNet, 25},

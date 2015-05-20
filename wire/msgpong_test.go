@@ -1,6 +1,3 @@
-// Originally derived from: btcsuite/btcd/wire/msgverack_test.go
-// Copyright (c) 2013-2015 Conformal Systems LLC.
-
 // Copyright (c) 2015 Monetas
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -16,13 +13,13 @@ import (
 	"github.com/monetas/bmutil/wire"
 )
 
-// TestVerAck tests the MsgVerAck API.
-func TestVerAck(t *testing.T) {
+// TestPong tests the MsgPong API.
+func TestPong(t *testing.T) {
 	// Ensure the command is expected value.
-	wantCmd := "verack"
-	msg := wire.NewMsgVerAck()
+	wantCmd := "pong"
+	msg := wire.NewMsgPong()
 	if cmd := msg.Command(); cmd != wantCmd {
-		t.Errorf("NewMsgVerAck: wrong command - got %v want %v",
+		t.Errorf("NewMsgPong: wrong command - got %v want %v",
 			cmd, wantCmd)
 	}
 
@@ -37,22 +34,22 @@ func TestVerAck(t *testing.T) {
 	return
 }
 
-// TestVerAckWire tests the MsgVerAck wire.encode and decode for various
+// TestPongWire tests the MsgPong wire.encode and decode for various
 // protocol versions.
-func TestVerAckWire(t *testing.T) {
-	msgVerAck := wire.NewMsgVerAck()
-	msgVerAckEncoded := []byte{}
+func TestPongWire(t *testing.T) {
+	msgPong := wire.NewMsgPong()
+	msgPongEncoded := []byte{}
 
 	tests := []struct {
-		in  *wire.MsgVerAck // Message to encode
-		out *wire.MsgVerAck // Expected decoded message
-		buf []byte          // Wire encoding
+		in  *wire.MsgPong // Message to encode
+		out *wire.MsgPong // Expected decoded message
+		buf []byte        // Wire encoding
 	}{
 		// Latest protocol version.
 		{
-			msgVerAck,
-			msgVerAck,
-			msgVerAckEncoded,
+			msgPong,
+			msgPong,
+			msgPongEncoded,
 		},
 	}
 
@@ -72,7 +69,7 @@ func TestVerAckWire(t *testing.T) {
 		}
 
 		// Decode the message from wire.format.
-		var msg wire.MsgVerAck
+		var msg wire.MsgPong
 		rbuf := bytes.NewReader(test.buf)
 		err = msg.Decode(rbuf)
 		if err != nil {

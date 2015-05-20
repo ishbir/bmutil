@@ -13,7 +13,7 @@ import (
 
 // MsgVerAck defines a bitmessage verack message which is used for a peer to
 // acknowledge a version message (MsgVersion) after it has used the information
-// to negotiate parameters.  It implements the Message interface.
+// to negotiate parameters. It implements the Message interface.
 //
 // This message has no payload.
 type MsgVerAck struct{}
@@ -30,7 +30,7 @@ func (msg *MsgVerAck) Encode(w io.Writer) error {
 	return nil
 }
 
-// Command returns the protocol command string for the message.  This is part
+// Command returns the protocol command string for the message. This is part
 // of the Message interface implementation.
 func (msg *MsgVerAck) Command() string {
 	return CmdVerAck
