@@ -38,6 +38,7 @@ const (
 	CmdInv     = "inv"
 	CmdGetData = "getdata"
 	CmdObject  = "object"
+	CmdPong    = "pong"
 )
 
 // Message is an interface that describes a bitmessage message.  A type that
@@ -70,6 +71,9 @@ func makeEmptyMessage(command string) (Message, error) {
 
 	case CmdGetData:
 		msg = &MsgGetData{}
+
+	case CmdPong:
+		msg = &MsgPong{}
 
 	default:
 		return nil, fmt.Errorf("unhandled command [%s]", command)
