@@ -3,6 +3,9 @@
 // license that can be found in the LICENSE file.
 
 /*
-Package pow implements proof-of-work and its checking mechanism.
+Package pow implements proof-of-work and its checking mechanism. More details
+for PoW for Bitmessage can be found at:
+
+https://bitmessage.org/wiki/Proof_of_work
 */
 package pow
