@@ -1,12 +1,15 @@
 bmutil
 =======
 
-Package btcutil provides Bitmessage-specific convenience functions and types.
+[![Build Status](https://travis-ci.org/monetas/bmutil.svg)]
+(https://travis-ci.org/monetas/bmutil)
+
+Package bmutil provides Bitmessage-specific convenience functions and types.
 A comprehensive suite of tests is provided to ensure proper functionality.
-Package btcutil is licensed under the liberal ISC license.
+Package bmutil is licensed under the liberal ISC license.
 
 This package was developed for bmd, an alternative full-node implementation of
-Bitmessage which is under active development by Monetas.  Although it was
+Bitmessage which is under active development by Monetas. Although it was
 primarily written for bmd, this package has intentionally been designed so it
 can be used as a standalone package for any projects needing the functionality
 provided.

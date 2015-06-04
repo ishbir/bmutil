@@ -35,7 +35,7 @@ func TestIdentityFromPubKeyMsg(t *testing.T) {
 
 	validIdMsg := wire.NewMsgPubKey(123123, time.Now().Add(time.Hour), 2, 1, 1,
 		&signingKey, &encryptKey, 0, 0, nil, nil, nil)
-	testId, err := identity.IdentityFromPubKeyMsg(validIdMsg)
+	testId, err := identity.FromPubKeyMsg(validIdMsg)
 	if err != nil {
 		t.Errorf("for error got %v", err)
 	}
@@ -72,7 +72,7 @@ func TestIdentityFromPubKeyMsg(t *testing.T) {
 
 	validIdMsg = wire.NewMsgPubKey(123123, time.Now().Add(time.Hour), 3, 1, 1,
 		&signingKey, &encryptKey, 2000, 1500, nil, nil, nil)
-	testId, err = identity.IdentityFromPubKeyMsg(validIdMsg)
+	testId, err = identity.FromPubKeyMsg(validIdMsg)
 	if err != nil {
 		t.Errorf("for error got %v", err)
 	}
@@ -103,9 +103,9 @@ func TestIdentityFromPubKeyMsg(t *testing.T) {
 	// version 4 message should fail since it's encrypted
 	invMsg := wire.NewMsgPubKey(123123, time.Now().Add(time.Hour), 4, 1, 1,
 		&signingKey, &encryptKey, 2000, 1500, nil, nil, nil)
-	testId, err = identity.IdentityFromPubKeyMsg(invMsg)
+	testId, err = identity.FromPubKeyMsg(invMsg)
 	if err == nil {
-		t.Errorf("got none expected error", err)
+		t.Error("got none expected error")
 	}
 
 	// invalid signing key
@@ -115,9 +115,9 @@ func TestIdentityFromPubKeyMsg(t *testing.T) {
 
 	invMsg = wire.NewMsgPubKey(123123, time.Now().Add(time.Hour), 3, 1, 1,
 		&invSigningKey, &encryptKey, 2000, 1500, nil, nil, nil)
-	testId, err = identity.IdentityFromPubKeyMsg(invMsg)
+	testId, err = identity.FromPubKeyMsg(invMsg)
 	if err == nil {
-		t.Errorf("got no error", err)
+		t.Error("got no error")
 	}
 
 	// invalid encryption key
@@ -126,8 +126,8 @@ func TestIdentityFromPubKeyMsg(t *testing.T) {
 
 	invMsg = wire.NewMsgPubKey(123123, time.Now().Add(time.Hour), 3, 1, 1,
 		&signingKey, &invEncryptKey, 2000, 1500, nil, nil, nil)
-	testId, err = identity.IdentityFromPubKeyMsg(invMsg)
+	testId, err = identity.FromPubKeyMsg(invMsg)
 	if err == nil {
-		t.Errorf("got no error", err)
+		t.Error("got no error")
 	}
 }
