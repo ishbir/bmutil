@@ -186,8 +186,8 @@ func (id *Private) ExportWIF() (address, signingKeyWif, encryptionKeyWif string,
 	return
 }
 
-// hash_helper exists for delegating the task of hash calculation
-func hash_helper(signingKey []byte, encryptionKey []byte) []byte {
+// hashHelper exists for delegating the task of hash calculation
+func hashHelper(signingKey []byte, encryptionKey []byte) []byte {
 	sha := sha512.New()
 	ripemd := ripemd160.New()
 
@@ -200,7 +200,7 @@ func hash_helper(signingKey []byte, encryptionKey []byte) []byte {
 
 // hash returns the ripemd160 hash used in the address
 func (id *Private) hash() []byte {
-	return hash_helper(id.SigningKey.PubKey().SerializeUncompressed(),
+	return hashHelper(id.SigningKey.PubKey().SerializeUncompressed(),
 		id.EncryptionKey.PubKey().SerializeUncompressed())
 }
 

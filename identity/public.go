@@ -41,13 +41,13 @@ func (id *Public) setDefaultPOWParams() {
 
 // hash returns the ripemd160 hash used in the address
 func (id *Public) hash() []byte {
-	return hash_helper(id.SigningKey.SerializeUncompressed(),
+	return hashHelper(id.SigningKey.SerializeUncompressed(),
 		id.EncryptionKey.SerializeUncompressed())
 }
 
-// IdentityFromPubKeyMsg generates an *identity.Public object based on a
-// wire.MsgPubKey object.
-func IdentityFromPubKeyMsg(msg *wire.MsgPubKey) (*Public, error) {
+// FromPubKeyMsg generates an *identity.Public object based on a wire.MsgPubKey
+// object.
+func FromPubKeyMsg(msg *wire.MsgPubKey) (*Public, error) {
 	switch msg.Version {
 	case wire.SimplePubKeyVersion, wire.ExtendedPubKeyVersion:
 		signingKey, err := msg.SigningKey.ToBtcec()
