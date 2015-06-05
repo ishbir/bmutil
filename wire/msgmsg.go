@@ -85,6 +85,12 @@ func (msg *MsgMsg) String() string {
 	return fmt.Sprintf("msg: v%d %d %s %d %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Encrypted)
 }
 
+// ToMsgObject converts the message into MsgObject.
+func (msg *MsgMsg) ToMsgObject() *MsgObject {
+	obj, _ := ToMsgObject(msg)
+	return obj
+}
+
 // NewMsgMsg returns a new object message that conforms to the Message interface
 // using the passed parameters and defaults for the remaining fields.
 func NewMsgMsg(nonce uint64, expires time.Time, version, streamNumber uint64, encrypted []byte, addressVersion, fromStreamNumber uint64, behavior uint32, signingKey, encryptKey *PubKey, nonceTrials, extraBytes uint64, destination *RipeHash, encoding uint64, message, ack, signature []byte) *MsgMsg {

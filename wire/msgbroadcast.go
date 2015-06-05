@@ -104,6 +104,12 @@ func (msg *MsgBroadcast) String() string {
 	return fmt.Sprintf("broadcast: v%d %d %s %d %x %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Tag, msg.Encrypted)
 }
 
+// ToMsgObject converts the message into MsgObject.
+func (msg *MsgBroadcast) ToMsgObject() *MsgObject {
+	obj, _ := ToMsgObject(msg)
+	return obj
+}
+
 // NewMsgBroadcast returns a new object message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.

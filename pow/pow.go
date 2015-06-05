@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/monetas/bmutil"
+	"github.com/monetas/bmutil/wire"
 )
 
 // CalculateTarget calculates the target POW value. payloadLength includes the
@@ -28,10 +29,11 @@ func CalculateTarget(payloadLength, ttl, nonceTrials,
 
 // Check checks if the POW that was done for an object message is sufficient.
 // obj is a byte slice containing the object message.
-func Check(obj []byte, extraBytes, nonceTrials uint64, refTime time.Time) bool {
+func Check(msg *wire.MsgObject, extraBytes, nonceTrials uint64, refTime time.Time) bool {
 	// calculate ttl from bytes 8-16 that contain ExpiresTime
-	ttl := binary.BigEndian.Uint64(obj[8:16]) - uint64(refTime.Unix())
+	ttl := uint64(msg.ExpiresTime.Unix() - refTime.Unix())
 
+	obj := wire.EncodeMessage(msg)
 	msgHash := bmutil.Sha512(obj[8:]) // exclude nonce value in the beginning
 	payloadLength := uint64(len(obj))
 
@@ -50,12 +52,12 @@ func Check(obj []byte, extraBytes, nonceTrials uint64, refTime time.Time) bool {
 
 // DoSequential does the PoW sequentially and returns the nonce value.
 func DoSequential(target uint64, initialHash []byte) uint64 {
-	var nonce uint64 = 0
+	var nonce uint64
 	nonceBytes := make([]byte, 8)
 	var trialValue uint64 = math.MaxUint64
 
 	for trialValue > target {
-		nonce += 1
+		nonce++
 		binary.BigEndian.PutUint64(nonceBytes, nonce)
 
 		resultHash := bmutil.DoubleSha512(append(nonceBytes, initialHash...))
@@ -72,7 +74,7 @@ func DoParallel(target uint64, initialHash []byte, parallelCount int) uint64 {
 
 	for i := 0; i < parallelCount; i++ {
 		go func(j int) {
-			var nonce uint64 = uint64(j)
+			nonce := uint64(j)
 			nonceBytes := make([]byte, 8)
 			var trialValue uint64 = math.MaxUint64
 
