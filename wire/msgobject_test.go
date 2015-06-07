@@ -2,6 +2,7 @@ package wire_test
 
 import (
 	"bytes"
+	"net"
 	"testing"
 	"time"
 
@@ -173,5 +174,165 @@ func TestDecodeMsgObject(t *testing.T) {
 		if _, err := wire.DecodeMsgObject(test.input); (err != nil) != test.errExpected {
 			t.Errorf("failed test case %d.", i)
 		}
+	}
+}
+
+func TestToMsgObject(t *testing.T) {
+	expires := time.Now().Add(300 * time.Minute)
+
+	tests := []struct {
+		input       []byte       // The input to the function.
+		msgType     wire.Message // An empty message of the correct type
+		errExpected bool         // Whether an error is expected.
+	}{
+		{ // Invalid case: version message.
+			wire.EncodeMessage(wire.NewMsgVersion(
+				wire.NewNetAddressIPPort(net.ParseIP("127.0.0.1"), 8333, 1, 0),
+				wire.NewNetAddressIPPort(net.ParseIP("192.168.0.1"), 8333, 1, 0),
+				5555, []uint32{1})),
+			&wire.MsgVersion{},
+			true,
+		},
+		{ // Invalid case: ver ack message.
+			wire.EncodeMessage(&wire.MsgVerAck{}),
+			&wire.MsgVerAck{},
+			true,
+		},
+		{ // Invalid case: addr message.
+			wire.EncodeMessage(&wire.MsgAddr{}),
+			&wire.MsgAddr{},
+			true,
+		},
+		{ // Invalid case: inv message.
+			wire.EncodeMessage(&wire.MsgInv{}),
+			&wire.MsgInv{},
+			true,
+		},
+		{ // Invalid case: get data message.
+			wire.EncodeMessage(&wire.MsgGetData{}),
+			&wire.MsgGetData{},
+			true,
+		},
+		{ // Valid case: GetPubKey object.
+			[]byte{
+				0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 85, 75, 111, 20,
+				0, 0, 0, 0, 4, 1, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+				108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+				124, 125, 126, 127, 128, 129},
+			&wire.MsgGetPubKey{},
+			false,
+		},
+		{ // Valid case: PubKey object.
+			wire.EncodeMessage(wire.NewMsgPubKey(543, expires, 4, 1, 2, &pubkey[0], &pubkey[1], 3, 5,
+				[]byte{4, 5, 6, 7, 8, 9, 10}, &shahash, []byte{11, 12, 13, 14, 15, 16, 17, 18})),
+			&wire.MsgPubKey{},
+			false,
+		},
+		{ // Valid case: Msg object.
+			wire.EncodeMessage(wire.NewMsgMsg(765, expires, 1, 1,
+				[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
+				1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+				[]byte{21, 22, 23, 24, 25, 26, 27, 28},
+				[]byte{20, 21, 22, 23, 24, 25, 26, 27},
+				[]byte{19, 20, 21, 22, 23, 24, 25, 26})),
+			&wire.MsgMsg{},
+			false,
+		},
+		{ // Valid case: Broadcast object.
+			wire.EncodeMessage(wire.NewMsgBroadcast(876, expires, 1, 1, &shahash,
+				[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
+				1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+				[]byte{27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41},
+				[]byte{42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56})),
+			&wire.MsgBroadcast{},
+			false,
+		},
+		{ // Valid case: unknown object.
+			wire.EncodeMessage(wire.NewMsgUnknownObject(345, expires, wire.ObjectType(4), 1, 1, []byte{77, 82, 53, 48, 96, 1})),
+			&wire.MsgUnknownObject{},
+			false,
+		},
+	}
+
+	for i, test := range tests {
+		test.msgType.Decode(bytes.NewReader(test.input))
+		if _, err := wire.ToMsgObject(test.msgType); (err != nil) != test.errExpected {
+			t.Errorf("failed test case %d.", i)
+		}
+	}
+}
+
+func TestCopy(t *testing.T) {
+	expires := time.Now().Add(300 * time.Minute)
+
+	getPubKey, _ := wire.DecodeMsgObject([]byte{
+		0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 85, 75, 111, 20,
+		0, 0, 0, 0, 4, 1, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+		108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+		124, 125, 126, 127, 128, 129})
+
+	pubKey, _ := wire.ToMsgObject(wire.NewMsgPubKey(543, expires, 4, 1, 2, &pubkey[0], &pubkey[1], 3, 5,
+		[]byte{4, 5, 6, 7, 8, 9, 10}, &shahash, []byte{11, 12, 13, 14, 15, 16, 17, 18}))
+
+	msg, _ := wire.ToMsgObject(wire.NewMsgMsg(765, expires, 1, 1,
+		[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
+		1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+		[]byte{21, 22, 23, 24, 25, 26, 27, 28},
+		[]byte{20, 21, 22, 23, 24, 25, 26, 27},
+		[]byte{19, 20, 21, 22, 23, 24, 25, 26}))
+
+	broadcast, _ := wire.ToMsgObject(wire.NewMsgBroadcast(876, expires, 1, 1, &shahash,
+		[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
+		1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+		[]byte{27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41},
+		[]byte{42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56}))
+
+	unknown, _ := wire.ToMsgObject(wire.NewMsgUnknownObject(345, expires, wire.ObjectType(4), 1, 1, []byte{77, 82, 53, 48, 96, 1}))
+
+	tests := []struct {
+		obj *wire.MsgObject
+	}{
+		{
+			getPubKey,
+		},
+		{
+			pubKey,
+		},
+		{
+			msg,
+		},
+		{
+			broadcast,
+		},
+		{
+			unknown,
+		},
+	}
+
+	for i, test := range tests {
+		copy := test.obj.Copy()
+		if !bytes.Equal(wire.EncodeMessage(test.obj), wire.EncodeMessage(copy)) {
+			t.Errorf("failed test case %d.", i)
+		}
+		test.obj.Payload[0]++
+		if bytes.Equal(wire.EncodeMessage(test.obj), wire.EncodeMessage(copy)) {
+			t.Errorf("failed test case %d after original was altered.", i)
+		}
+	}
+}
+
+func TestNew(t *testing.T) {
+	obj := wire.NewMsgObject(123, time.Now(), 3, 1, 1, []byte{1, 2, 3, 4, 5, 56})
+
+	if obj == nil {
+		t.Error("Failed to return object.")
+	}
+
+	if obj.Command() != wire.CmdObject {
+		t.Error("Wrong command string:", obj.Command())
+	}
+
+	if obj.MaxPayloadLength() != wire.MaxPayloadOfMsgObject {
+		t.Error("Wrong command string:", obj.MaxPayloadLength())
 	}
 }
