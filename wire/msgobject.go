@@ -6,6 +6,7 @@ package wire
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -192,9 +193,15 @@ func DecodeMsgObject(obj []byte) (*MsgObject, error) {
 
 // ToMsgObject converts a Message to the MsgObject concrete type.
 func ToMsgObject(msg Message) (*MsgObject, error) {
-	objMsg := &MsgObject{}
-	err := objMsg.Decode(bytes.NewReader(EncodeMessage(msg)))
-	return objMsg, err
+	switch msg.(type) {
+	case *MsgObject, *MsgGetPubKey, *MsgPubKey, *MsgMsg, *MsgBroadcast, *MsgUnknownObject:
+		objMsg := &MsgObject{}
+		err := objMsg.Decode(bytes.NewReader(EncodeMessage(msg)))
+		return objMsg, err
+
+	default:
+		return nil, errors.New("Invalid message type")
+	}
 }
 
 // NewMsgObject returns a new object message that conforms to the Message
