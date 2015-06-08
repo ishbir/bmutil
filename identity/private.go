@@ -75,8 +75,8 @@ func NewRandom(initialZeros int) (*Private, error) {
 	return id, nil
 }
 
-// Create identities based on a deterministic passphrase. Note that this does
-// not create an address.
+// NewDeterministic creates identities based on a deterministic passphrase.
+// Note that this does not create an address.
 func NewDeterministic(passphrase string, initialZeros uint64) (*Private, error) {
 	if initialZeros < 1 { // Cannot take this
 		return nil, errors.New("minimum 1 initial zero needed")

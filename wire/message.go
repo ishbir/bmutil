@@ -354,14 +354,7 @@ func ReadMessage(r io.Reader, bmnet BitmessageNet) (Message, []byte, error) {
 // the standard bitmessage header that goes along with every message sent over
 // the p2p connection.
 func EncodeMessage(msg Message) []byte {
-	buf := &bytes.Buffer{}
-	msg.Encode(buf)
+	var buf bytes.Buffer
+	msg.Encode(&buf)
 	return buf.Bytes()
-}
-
-// MessageHash takes a message and returns its hash (double sha512, as per the
-// bitmessage protocol) as it would be indexed in the database.
-func MessageHash(msg Message) *ShaHash {
-	hash, _ := NewShaHash(bmutil.CalcInventoryHash(EncodeMessage(msg)))
-	return hash
 }

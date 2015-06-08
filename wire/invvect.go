@@ -27,7 +27,7 @@ type InvVect struct {
 	Hash ShaHash // Hash of the data
 }
 
-// NewInvVect returns a new InvVect using the provided type and hash.
+// NewInvVect returns a new InvVect using the provided hash.
 func NewInvVect(hash *ShaHash) *InvVect {
 	return &InvVect{
 		Hash: *hash,

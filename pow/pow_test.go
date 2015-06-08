@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/monetas/bmutil/pow"
+	"github.com/monetas/bmutil/wire"
 )
 
 const (
@@ -112,13 +113,14 @@ func TestCheck(t *testing.T) {
 	refTime := time.Unix(1432295555, 0) // 22 May 2015, 5:22 PM IST
 	for n, tc := range tests {
 		b, _ := hex.DecodeString(tc.payload)
-		if !pow.Check(b, nonceTrials, extraBytes, refTime) {
+		msg, _ := wire.DecodeMsgObject(b)
+		if !pow.Check(msg, nonceTrials, extraBytes, refTime) {
 			t.Errorf("for test #%d check returned false", n)
 		}
 
-		// change a byte of nonce
-		b[0] = 0x12
-		if pow.Check(b, nonceTrials, extraBytes, refTime) {
+		// change nonce
+		msg.Nonce = 0x00
+		if pow.Check(msg, nonceTrials, extraBytes, refTime) {
 			t.Errorf("for test #%d check returned true", n)
 		}
 	}
@@ -126,7 +128,8 @@ func TestCheck(t *testing.T) {
 	refTime = time.Unix(1434714755, 0) // +28 days
 	for n, tc := range tests {
 		b, _ := hex.DecodeString(tc.payload)
-		if pow.Check(b, nonceTrials, extraBytes, refTime) {
+		msg, _ := wire.DecodeMsgObject(b)
+		if pow.Check(msg, nonceTrials, extraBytes, refTime) {
 			t.Errorf("for test #%d check returned true", n)
 		}
 	}

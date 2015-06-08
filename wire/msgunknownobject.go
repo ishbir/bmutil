@@ -71,6 +71,12 @@ func (msg *MsgUnknownObject) String() string {
 	return fmt.Sprintf("unknown object: v%d %d %s %d %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Payload)
 }
 
+// ToMsgObject converts the message into MsgObject.
+func (msg *MsgUnknownObject) ToMsgObject() *MsgObject {
+	obj, _ := ToMsgObject(msg)
+	return obj
+}
+
 // NewMsgUnknownObject returns a new object message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.

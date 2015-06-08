@@ -168,6 +168,12 @@ func (msg *MsgPubKey) String() string {
 	return fmt.Sprintf("pubkey: v%d %d %s %d %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Tag)
 }
 
+// ToMsgObject converts the message into MsgObject.
+func (msg *MsgPubKey) ToMsgObject() *MsgObject {
+	obj, _ := ToMsgObject(msg)
+	return obj
+}
+
 // NewMsgPubKey returns a new object message that conforms to the Message
 // interface using the passed parameters and defaults for the remaining fields.
 func NewMsgPubKey(nonce uint64, expires time.Time,
