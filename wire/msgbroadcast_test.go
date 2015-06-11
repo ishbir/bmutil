@@ -22,7 +22,7 @@ func TestBroadcast(t *testing.T) {
 	wantCmd := "object"
 	now := time.Now()
 	enc := make([]byte, 99)
-	msg := wire.NewMsgBroadcast(83928, now, 2, 1, nil, enc, 0, 0, 0, nil, nil, 0, 0, nil, 0, nil, nil)
+	msg := wire.NewMsgBroadcast(83928, now, 2, 1, nil, enc, 0, 0, 0, nil, nil, 0, 0, 0, nil, nil)
 	if cmd := msg.Command(); cmd != wantCmd {
 		t.Errorf("NewMsgBroadcast: wrong command - got %v want %v",
 			cmd, wantCmd)
@@ -49,12 +49,8 @@ func TestBroadcast(t *testing.T) {
 func TestBroadcastWire(t *testing.T) {
 	expires := time.Unix(0x495fab29, 0) // 2009-01-03 12:15:05 -0600 CST)
 	enc := make([]byte, 128)
-	msgBase := wire.NewMsgBroadcast(83928, expires, 2, 1, nil, enc, 0, 0, 0, nil, nil, 0, 0, nil, 0, nil, nil)
-	ripeBytes := make([]byte, 20)
-	ripe, err := wire.NewRipeHash(ripeBytes)
-	if err != nil {
-		t.Fatalf("could not make a ripe hash %s", err)
-	}
+	msgBase := wire.NewMsgBroadcast(83928, expires, 2, 1, nil, enc, 0, 0, 0, nil, nil, 0, 0, 0, nil, nil)
+
 	m := make([]byte, 32)
 	a := make([]byte, 8)
 	tagBytes := make([]byte, 32)
@@ -62,8 +58,8 @@ func TestBroadcastWire(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not make a sha hash %s", err)
 	}
-	msgTagged := wire.NewMsgBroadcast(83928, expires, 5, 1, tag, enc, 1, 1, 1, pubKey1, pubKey2, 512, 512, ripe, 0, m, a)
-	msgBaseAndTag := wire.NewMsgBroadcast(83928, expires, 5, 1, tag, enc, 0, 0, 0, nil, nil, 0, 0, nil, 0, nil, nil)
+	msgTagged := wire.NewMsgBroadcast(83928, expires, 5, 1, tag, enc, 1, 1, 1, pubKey1, pubKey2, 512, 512, 0, m, a)
+	msgBaseAndTag := wire.NewMsgBroadcast(83928, expires, 5, 1, tag, enc, 0, 0, 0, nil, nil, 0, 0, 0, nil, nil)
 
 	tests := []struct {
 		in  *wire.MsgBroadcast // Message to encode

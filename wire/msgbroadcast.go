@@ -9,9 +9,15 @@ import (
 	"io"
 	"io/ioutil"
 	"time"
+
+	"github.com/monetas/bmutil"
 )
 
 const (
+	// TaglessBroadcastVersion is the broadcast version which does not contain
+	// a tag.
+	TaglessBroadcastVersion = 4
+
 	// TagBroadcastVersion is the broadcast version from which tags for light
 	// clients started being added at the beginning of the broadcast message.
 	TagBroadcastVersion = 5
@@ -21,24 +27,23 @@ const (
 // message that can be decrypted by all the clients that know the address of the
 // sender.
 type MsgBroadcast struct {
-	Nonce            uint64
-	ExpiresTime      time.Time
-	ObjectType       ObjectType
-	Version          uint64
-	StreamNumber     uint64
-	Tag              *ShaHash
-	Encrypted        []byte
-	AddressVersion   uint64
-	FromStreamNumber uint64
-	Behavior         uint32
-	SigningKey       *PubKey
-	EncryptKey       *PubKey
-	NonceTrials      uint64
-	ExtraBytes       uint64
-	Destination      *RipeHash
-	Encoding         uint64
-	Message          []byte
-	Signature        []byte
+	Nonce              uint64
+	ExpiresTime        time.Time
+	ObjectType         ObjectType
+	Version            uint64
+	StreamNumber       uint64
+	Tag                *ShaHash
+	Encrypted          []byte
+	FromAddressVersion uint64
+	FromStreamNumber   uint64
+	Behavior           uint32
+	SigningKey         *PubKey
+	EncryptionKey      *PubKey
+	NonceTrials        uint64
+	ExtraBytes         uint64
+	Encoding           uint64
+	Message            []byte
+	Signature          []byte
 }
 
 // Decode decodes r using the bitmessage protocol encoding into the receiver.
@@ -57,8 +62,8 @@ func (msg *MsgBroadcast) Decode(r io.Reader) error {
 		return messageError("Decode", str)
 	}
 
-	if msg.Version >= TagBroadcastVersion {
-		msg.Tag, _ = NewShaHash(make([]byte, HashSize))
+	if msg.Version == TagBroadcastVersion {
+		msg.Tag = &ShaHash{}
 		if err = readElements(r, msg.Tag); err != nil {
 			return err
 		}
@@ -78,7 +83,7 @@ func (msg *MsgBroadcast) Encode(w io.Writer) error {
 		return err
 	}
 
-	if msg.Version >= TagBroadcastVersion {
+	if msg.Version == TagBroadcastVersion {
 		if err = writeElement(w, msg.Tag); err != nil {
 			return err
 		}
@@ -110,28 +115,165 @@ func (msg *MsgBroadcast) ToMsgObject() *MsgObject {
 	return obj
 }
 
+// EncodeForSigning encodes MsgBroadcast so that it can be hashed and signed.
+func (msg *MsgBroadcast) EncodeForSigning(w io.Writer) error {
+	err := EncodeMsgObjectSignatureHeader(w, msg.ExpiresTime, msg.ObjectType,
+		msg.Version, msg.StreamNumber)
+	if err != nil {
+		return err
+	}
+	if msg.Version == TagBroadcastVersion {
+		err = writeElement(w, msg.Tag)
+		if err != nil {
+			return err
+		}
+	}
+	if err = bmutil.WriteVarInt(w, msg.FromAddressVersion); err != nil {
+		return err
+	}
+	if err = bmutil.WriteVarInt(w, msg.FromStreamNumber); err != nil {
+		return err
+	}
+	err = writeElements(w, msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	if msg.FromAddressVersion >= 3 {
+		if err = bmutil.WriteVarInt(w, msg.NonceTrials); err != nil {
+			return err
+		}
+		if err = bmutil.WriteVarInt(w, msg.ExtraBytes); err != nil {
+			return err
+		}
+	}
+	if err = bmutil.WriteVarInt(w, msg.Encoding); err != nil {
+		return err
+	}
+	msgLength := uint64(len(msg.Message))
+	if err = bmutil.WriteVarInt(w, msgLength); err != nil {
+		return err
+	}
+	if _, err := w.Write(msg.Message); err != nil {
+		return err
+	}
+	return nil
+}
+
+// EncodeForEncryption encodes MsgBroadcast so that it can be encrypted.
+func (msg *MsgBroadcast) EncodeForEncryption(w io.Writer) error {
+	if err := bmutil.WriteVarInt(w, msg.FromAddressVersion); err != nil {
+		return err
+	}
+	if err := bmutil.WriteVarInt(w, msg.FromStreamNumber); err != nil {
+		return err
+	}
+	err := writeElements(w, msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	if msg.FromAddressVersion >= 3 {
+		if err = bmutil.WriteVarInt(w, msg.NonceTrials); err != nil {
+			return err
+		}
+		if err = bmutil.WriteVarInt(w, msg.ExtraBytes); err != nil {
+			return err
+		}
+	}
+	if err = bmutil.WriteVarInt(w, msg.Encoding); err != nil {
+		return err
+	}
+	msgLength := uint64(len(msg.Message))
+	if err = bmutil.WriteVarInt(w, msgLength); err != nil {
+		return err
+	}
+	if _, err := w.Write(msg.Message); err != nil {
+		return err
+	}
+	sigLength := uint64(len(msg.Signature))
+	if err = bmutil.WriteVarInt(w, sigLength); err != nil {
+		return err
+	}
+	_, err = w.Write(msg.Signature)
+	return nil
+}
+
+// DecodeFromDecrypted decodes MsgBroadcast from its decrypted form.
+func (msg *MsgBroadcast) DecodeFromDecrypted(r io.Reader) error {
+	var err error
+	if msg.FromAddressVersion, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	if msg.FromStreamNumber, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	msg.SigningKey = &PubKey{}
+	msg.EncryptionKey = &PubKey{}
+	err = readElements(r, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	if msg.FromAddressVersion >= 3 {
+		if msg.NonceTrials, err = bmutil.ReadVarInt(r); err != nil {
+			return err
+		}
+		if msg.ExtraBytes, err = bmutil.ReadVarInt(r); err != nil {
+			return err
+		}
+	}
+	if msg.Encoding, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	var msgLength uint64
+	if msgLength, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	if msgLength > MaxPayloadOfMsgObject {
+		str := fmt.Sprintf("message length exceeds max length - "+
+			"indicates %d, but max length is %d",
+			msgLength, MaxPayloadOfMsgObject)
+		return messageError("DecodeFromDecrypted", str)
+	}
+	msg.Message = make([]byte, msgLength)
+	_, err = io.ReadFull(r, msg.Message)
+	if err != nil {
+		return err
+	}
+	var sigLength uint64
+	if sigLength, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	if sigLength > signatureMaxLength {
+		str := fmt.Sprintf("signature length exceeds max length - "+
+			"indicates %d, but max length is %d",
+			sigLength, signatureMaxLength)
+		return messageError("DecodeFromDecrypted", str)
+	}
+	msg.Signature = make([]byte, sigLength)
+	_, err = io.ReadFull(r, msg.Signature)
+	return err
+}
+
 // NewMsgBroadcast returns a new object message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgBroadcast(nonce uint64, expires time.Time, version, streamNumber uint64, tag *ShaHash, encrypted []byte, addressVersion, fromStreamNumber uint64, behavior uint32, signingKey, encryptKey *PubKey, nonceTrials, extraBytes uint64, destination *RipeHash, encoding uint64, message, signature []byte) *MsgBroadcast {
+func NewMsgBroadcast(nonce uint64, expires time.Time, version, streamNumber uint64, tag *ShaHash, encrypted []byte, fromAddressVersion, fromStreamNumber uint64, behavior uint32, signingKey, encryptKey *PubKey, nonceTrials, extraBytes, encoding uint64, message, signature []byte) *MsgBroadcast {
 	return &MsgBroadcast{
-		Nonce:            nonce,
-		ExpiresTime:      expires,
-		ObjectType:       ObjectTypeBroadcast,
-		Version:          version,
-		StreamNumber:     streamNumber,
-		Tag:              tag,
-		Encrypted:        encrypted,
-		AddressVersion:   addressVersion,
-		FromStreamNumber: fromStreamNumber,
-		Behavior:         behavior,
-		SigningKey:       signingKey,
-		EncryptKey:       encryptKey,
-		NonceTrials:      nonceTrials,
-		ExtraBytes:       extraBytes,
-		Destination:      destination,
-		Encoding:         encoding,
-		Message:          message,
-		Signature:        signature,
+		Nonce:              nonce,
+		ExpiresTime:        expires,
+		ObjectType:         ObjectTypeBroadcast,
+		Version:            version,
+		StreamNumber:       streamNumber,
+		Tag:                tag,
+		Encrypted:          encrypted,
+		FromAddressVersion: fromAddressVersion,
+		FromStreamNumber:   fromStreamNumber,
+		Behavior:           behavior,
+		SigningKey:         signingKey,
+		EncryptionKey:      encryptKey,
+		NonceTrials:        nonceTrials,
+		ExtraBytes:         extraBytes,
+		Encoding:           encoding,
+		Message:            message,
+		Signature:          signature,
 	}
 }
