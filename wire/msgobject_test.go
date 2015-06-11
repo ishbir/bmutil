@@ -49,6 +49,19 @@ func TestObjectTypeString(t *testing.T) {
 	}
 }
 
+func TestString(t *testing.T) {
+	obj, _ := wire.DecodeMsgObject([]byte{
+		0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 85, 75, 111, 20,
+		0, 0, 0, 0, 4, 1, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+		108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+		124, 125, 126, 127, 128, 129})
+
+	str := obj.String()
+	if str[8:17] != "Getpubkey" {
+		t.Errorf("String representation: got %v, want %v", str[8:17], "Getpubkey")
+	}
+}
+
 // TestEncodeAndDecodeObjectHeader tests EncodeObjectHeader and DecodeObjectHeader
 // It is not necessary to test separate cases for different object types.
 func TestEncodeAndDecodeObjectHeader(t *testing.T) {
@@ -159,7 +172,7 @@ func TestDecodeMsgObject(t *testing.T) {
 		{ // Valid case: Broadcast object.
 			wire.EncodeMessage(wire.NewMsgBroadcast(876, expires, 1, 1, &shahash,
 				[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
-				1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+				1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, 1,
 				[]byte{27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41},
 				[]byte{42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56})),
 			false,
@@ -241,7 +254,7 @@ func TestToMsgObject(t *testing.T) {
 		{ // Valid case: Broadcast object.
 			wire.EncodeMessage(wire.NewMsgBroadcast(876, expires, 1, 1, &shahash,
 				[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
-				1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+				1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, 1,
 				[]byte{27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41},
 				[]byte{42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56})),
 			&wire.MsgBroadcast{},
@@ -256,9 +269,28 @@ func TestToMsgObject(t *testing.T) {
 
 	for i, test := range tests {
 		test.msgType.Decode(bytes.NewReader(test.input))
+
 		if _, err := wire.ToMsgObject(test.msgType); (err != nil) != test.errExpected {
 			t.Errorf("failed test case %d.", i)
 		}
+	}
+}
+
+// TestEncodeAndDecodeErrors checks some error cases in Encode and Decode
+func TestEncodeAndDecodeErrors(t *testing.T) {
+	obj := &wire.MsgObject{}
+	if obj.Decode(bytes.NewReader([]byte{})) == nil {
+		t.Error("object Decode should have returned an error.")
+	}
+
+	w := newFixedWriter(0)
+	obj, _ = wire.DecodeMsgObject([]byte{
+		0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 85, 75, 111, 20,
+		0, 0, 0, 0, 4, 1, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+		108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+		124, 125, 126, 127, 128, 129})
+	if obj.Encode(w) == nil {
+		t.Error("object Encode should have returned an error.")
 	}
 }
 
@@ -283,7 +315,7 @@ func TestCopy(t *testing.T) {
 
 	broadcast, _ := wire.ToMsgObject(wire.NewMsgBroadcast(876, expires, 1, 1, &shahash,
 		[]byte{90, 87, 66, 45, 3, 2, 120, 101, 78, 78, 78, 7, 85, 55, 2, 23},
-		1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, &ripehash, 1,
+		1, 1, 2, &pubkey[0], &pubkey[1], 3, 5, 1,
 		[]byte{27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41},
 		[]byte{42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56}))
 
