@@ -168,12 +168,6 @@ func (msg *MsgPubKey) String() string {
 	return fmt.Sprintf("pubkey: v%d %d %s %d %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Tag)
 }
 
-// ToMsgObject converts the message into MsgObject.
-func (msg *MsgPubKey) ToMsgObject() *MsgObject {
-	obj, _ := ToMsgObject(msg)
-	return obj
-}
-
 // EncodeForSigning encodes MsgPubKey so that it can be hashed and signed.
 func (msg *MsgPubKey) EncodeForSigning(w io.Writer) error {
 	err := EncodeMsgObjectSignatureHeader(w, msg.ExpiresTime, msg.ObjectType,
@@ -217,7 +211,9 @@ func (msg *MsgPubKey) EncodeForEncryption(w io.Writer) error {
 	if err = bmutil.WriteVarInt(w, sigLength); err != nil {
 		return err
 	}
-	_, err = w.Write(msg.Signature)
+	if _, err = w.Write(msg.Signature); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -49,6 +49,20 @@ func TestObjectTypeString(t *testing.T) {
 	}
 }
 
+func TestString(t *testing.T) {
+	obj, _ := wire.DecodeMsgObject([]byte{
+		0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 85, 75, 111, 20,
+		0, 0, 0, 0, 4, 1, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+		108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+		124, 125, 126, 127, 128, 129})
+
+	expected := "object: Getpubkey v4, expires: 2015-05-07 08:56:36 -0500 CDT, nonce: 123, stream: 1"
+
+	if obj.String() != expected {
+		t.Error("Incorrect string returned; ", obj.String())
+	}
+}
+
 // TestEncodeAndDecodeObjectHeader tests EncodeObjectHeader and DecodeObjectHeader
 // It is not necessary to test separate cases for different object types.
 func TestEncodeAndDecodeObjectHeader(t *testing.T) {
@@ -256,9 +270,28 @@ func TestToMsgObject(t *testing.T) {
 
 	for i, test := range tests {
 		test.msgType.Decode(bytes.NewReader(test.input))
+
 		if _, err := wire.ToMsgObject(test.msgType); (err != nil) != test.errExpected {
 			t.Errorf("failed test case %d.", i)
 		}
+	}
+}
+
+// TestEncodeAndDecodeErrors checks some error cases in Encode and Decode
+func TestEncodeAndDecodeErrors(t *testing.T) {
+	obj := &wire.MsgObject{}
+	if obj.Decode(bytes.NewReader([]byte{})) == nil {
+		t.Error("object Decode should have returned an error.")
+	}
+
+	w := newFixedWriter(0)
+	obj, _ = wire.DecodeMsgObject([]byte{
+		0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 85, 75, 111, 20,
+		0, 0, 0, 0, 4, 1, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+		108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+		124, 125, 126, 127, 128, 129})
+	if obj.Encode(w) == nil {
+		t.Error("object Encode should have returned an error.")
 	}
 }
 

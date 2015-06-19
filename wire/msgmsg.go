@@ -87,12 +87,6 @@ func (msg *MsgMsg) String() string {
 	return fmt.Sprintf("msg: v%d %d %s %d %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Encrypted)
 }
 
-// ToMsgObject converts the message into MsgObject.
-func (msg *MsgMsg) ToMsgObject() *MsgObject {
-	obj, _ := ToMsgObject(msg)
-	return obj
-}
-
 // EncodeForSigning encodes MsgMsg so that it can be hashed and signed.
 func (msg *MsgMsg) EncodeForSigning(w io.Writer) error {
 	err := EncodeMsgObjectSignatureHeader(w, msg.ExpiresTime, msg.ObjectType,
@@ -186,7 +180,9 @@ func (msg *MsgMsg) EncodeForEncryption(w io.Writer) error {
 	if err = bmutil.WriteVarInt(w, sigLength); err != nil {
 		return err
 	}
-	_, err = w.Write(msg.Signature)
+	if _, err = w.Write(msg.Signature); err != nil {
+		return err
+	}
 	return nil
 }
 
