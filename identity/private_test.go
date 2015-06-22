@@ -88,46 +88,51 @@ func TestNewRandom(t *testing.T) {
 }
 
 type deterministicAddressTest struct {
-	password string
-	address  string
+	passphrase string
+	address    []string
 }
 
 var deterministicAddressTests = []deterministicAddressTest{
-	{"hello", "BM-2DB6AzjZvzM8NkS3HMYWMP9R1Rt778mhN8"},
-	{"general", "BM-2DAV89w336ovy6BUJnfVRD5B9qipFbRgmr"},
-	{"privacy", "BM-2D8hw9EzzMMJUYV44txMFqbtq3T7MCvyz7"},
-	{"news", "BM-2D8ZrxtSU1jf7nnfvqVwRfCVh1Q8NW4td5"},
-	{"PHP", "BM-2cUvgm9ScCJxig3cAkwNzD5iEw3rKJ7NeG"},
+	{"hello", []string{"BM-2DB6AzjZvzM8NkS3HMYWMP9R1Rt778mhN8"}},
+	{"general", []string{"BM-2DAV89w336ovy6BUJnfVRD5B9qipFbRgmr"}},
+	{"privacy", []string{"BM-2D8hw9EzzMMJUYV44txMFqbtq3T7MCvyz7"}},
+	{"news", []string{"BM-2D8ZrxtSU1jf7nnfvqVwRfCVh1Q8NW4td5"}},
+	{"PHP", []string{"BM-2cUvgm9ScCJxig3cAkwNzD5iEw3rKJ7NeG"}},
+	{"bmd123", []string{"BM-2cWezCUSS3RCs97RRoxpDTGSyBqpyBMicp",
+		"BM-2cXr5HesNSa35SjpZN7usUCV19zy97LTtu",
+		"BM-2cXLvxvcnRjmQMgsktFqzwkd69mhC7kzgz"}},
 }
 
 func TestNewDeterministic(t *testing.T) {
 	for _, pair := range deterministicAddressTests {
-		id, err := identity.NewDeterministic(pair.password, 1)
+		ids, err := identity.NewDeterministic(pair.passphrase, 1, len(pair.address))
+
 		if err != nil {
 			t.Error(
-				"for", pair.password,
+				"for", pair.passphrase,
 				"got error:", err.Error(),
 			)
 			continue
 		}
-		// Make sure to generate address of same version and stream
-		addr, _ := bmutil.DecodeAddress(pair.address)
-		id.Address.Version = addr.Version
-		id.Address.Stream = addr.Stream
-		address, _, _, _ := id.ExportWIF()
-		if address != pair.address {
-			t.Error(
-				"for", pair.password,
-				"got", address,
-				"expected", pair.address,
-			)
+		// Check to see if all IDs were generated correctly.
+		for i, id := range ids {
+			// Make sure to generate address of same version and stream
+			addr, _ := bmutil.DecodeAddress(pair.address[i])
+			id.Address.Version = addr.Version
+			id.Address.Stream = addr.Stream
+			address, _, _, _ := id.ExportWIF()
+			if address != pair.address[i] {
+				t.Errorf("for passphrase %s #%d got %s expected %s",
+					pair.passphrase, i, address, pair.address[i],
+				)
+			}
 		}
 	}
 }
 
 func TestErrors(t *testing.T) {
 	// NewDeterministic
-	_, err := identity.NewDeterministic("abcabc", 0) // 0 initial zeros
+	_, err := identity.NewDeterministic("abcabc", 0, 1) // 0 initial zeros
 	if err == nil {
 		t.Error("NewDeterministic: 0 initial zeros, got no error")
 	}

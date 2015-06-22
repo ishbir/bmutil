@@ -31,11 +31,6 @@ func (id *Public) CreateAddress(version, stream uint64) {
 	copy(id.Address.Ripe[:], id.hash())
 }
 
-func (id *Public) setDefaultPOWParams() {
-	id.NonceTrialsPerByte = pow.DefaultNonceTrialsPerByte
-	id.ExtraBytes = pow.DefaultExtraBytes
-}
-
 // hash returns the ripemd160 hash used in the address
 func (id *Public) hash() []byte {
 	return hashHelper(id.SigningKey.SerializeUncompressed(),
