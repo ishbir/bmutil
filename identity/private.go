@@ -75,14 +75,15 @@ func NewRandom(initialZeros int) (*Private, error) {
 	return id, nil
 }
 
-// NewDeterministic creates identities based on a deterministic passphrase.
+// NewDeterministic creates n identities based on a deterministic passphrase.
 // Note that this does not create an address.
-func NewDeterministic(passphrase string, initialZeros uint64) (*Private, error) {
+func NewDeterministic(passphrase string, initialZeros uint64, n int) ([]*Private,
+	error) {
 	if initialZeros < 1 { // Cannot take this
 		return nil, errors.New("minimum 1 initial zero needed")
 	}
 
-	id := new(Private)
+	ids := make([]*Private, n)
 
 	var b bytes.Buffer
 
@@ -92,39 +93,45 @@ func NewDeterministic(passphrase string, initialZeros uint64) (*Private, error) 
 	initialZeroBytes := make([]byte, initialZeros) // used for comparison
 	sha := sha512.New()
 
-	// Go through loop to encryption keys with required num. of zeros
-	for {
-		// Create signing keys
-		b.WriteString(passphrase)
-		bmutil.WriteVarInt(&b, signingKeyNonce)
-		sha.Reset()
-		sha.Write(b.Bytes())
-		b.Reset()
-		id.SigningKey, _ = btcec.PrivKeyFromBytes(btcec.S256(),
-			sha.Sum(nil)[:32])
+	// Generate n identities.
+	for i := 0; i < n; i++ {
+		id := new(Private)
 
-		// Create encryption keys
-		b.WriteString(passphrase)
-		bmutil.WriteVarInt(&b, encryptionKeyNonce)
-		sha.Reset()
-		sha.Write(b.Bytes())
-		b.Reset()
-		id.EncryptionKey, _ = btcec.PrivKeyFromBytes(btcec.S256(),
-			sha.Sum(nil)[:32])
+		// Go through loop to encryption keys with required num. of zeros
+		for {
+			// Create signing keys
+			b.WriteString(passphrase)
+			bmutil.WriteVarInt(&b, signingKeyNonce)
+			sha.Reset()
+			sha.Write(b.Bytes())
+			b.Reset()
+			id.SigningKey, _ = btcec.PrivKeyFromBytes(btcec.S256(),
+				sha.Sum(nil)[:32])
 
-		// Increment nonces
-		signingKeyNonce += 2
-		encryptionKeyNonce += 2
+			// Create encryption keys
+			b.WriteString(passphrase)
+			bmutil.WriteVarInt(&b, encryptionKeyNonce)
+			sha.Reset()
+			sha.Write(b.Bytes())
+			b.Reset()
+			id.EncryptionKey, _ = btcec.PrivKeyFromBytes(btcec.S256(),
+				sha.Sum(nil)[:32])
 
-		// We found our hash!
-		if bytes.Equal(id.hash()[0:initialZeros], initialZeroBytes) {
-			break // stop calculations
+			// Increment nonces
+			signingKeyNonce += 2
+			encryptionKeyNonce += 2
+
+			// We found our hash!
+			if bytes.Equal(id.hash()[0:initialZeros], initialZeroBytes) {
+				break // stop calculations
+			}
 		}
+		id.setDefaultPOWParams()
+
+		ids[i] = id
 	}
 
-	id.setDefaultPOWParams()
-
-	return id, nil
+	return ids, nil
 }
 
 func (id *Private) setDefaultPOWParams() {
