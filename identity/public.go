@@ -5,14 +5,11 @@
 package identity
 
 import (
-	"errors"
 	"math"
 
 	"github.com/btcsuite/btcd/btcec"
-
 	"github.com/monetas/bmutil"
 	"github.com/monetas/bmutil/pow"
-	"github.com/monetas/bmutil/wire"
 )
 
 // Public contains the identity of the remote user, which includes public
@@ -45,36 +42,22 @@ func (id *Public) hash() []byte {
 		id.EncryptionKey.SerializeUncompressed())
 }
 
-// FromPubKeyMsg generates an *identity.Public object based on a wire.MsgPubKey
-// object.
-func FromPubKeyMsg(msg *wire.MsgPubKey) (*Public, error) {
-	switch msg.Version {
-	case wire.SimplePubKeyVersion, wire.ExtendedPubKeyVersion:
-		signingKey, err := msg.SigningKey.ToBtcec()
-		if err != nil {
-			return nil, err
-		}
-		encryptionKey, err := msg.EncryptionKey.ToBtcec()
-		if err != nil {
-			return nil, err
-		}
+// NewPublic creates and initializes an *identity.Public object.
+func NewPublic(signingKey, encryptionKey *btcec.PublicKey, nonceTrials,
+	extraBytes, addrVersion, addrStream uint64) *Public {
 
-		id := &Public{
-			EncryptionKey: encryptionKey,
-			SigningKey:    signingKey,
-		}
-		// set values appropriately; note that Go zero-initializes everything
-		// so if version is 2, we should have 0 in msg.ExtraBytes and
-		// msg.NonceTrials
-		id.ExtraBytes = uint64(math.Max(float64(pow.DefaultExtraBytes),
-			float64(msg.ExtraBytes)))
-		id.NonceTrialsPerByte = uint64(math.Max(float64(pow.DefaultNonceTrialsPerByte),
-			float64(msg.NonceTrials)))
-		id.CreateAddress(msg.Version, msg.StreamNumber)
-
-		return id, nil
+	id := &Public{
+		EncryptionKey: encryptionKey,
+		SigningKey:    signingKey,
 	}
+	// set values appropriately; note that Go zero-initializes everything
+	// so if version is 2, we should have 0 in msg.ExtraBytes and
+	// msg.NonceTrials
+	id.NonceTrialsPerByte = uint64(math.Max(float64(pow.DefaultNonceTrialsPerByte),
+		float64(nonceTrials)))
+	id.ExtraBytes = uint64(math.Max(float64(pow.DefaultExtraBytes),
+		float64(extraBytes)))
+	id.CreateAddress(addrVersion, addrStream)
 
-	// not defined for encrypted pubkey
-	return nil, errors.New("unsupported pubkey version")
+	return id
 }

@@ -105,12 +105,6 @@ func (msg *MsgGetPubKey) String() string {
 	return fmt.Sprintf("getpubkey: v%d %d %s %d %x %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Ripe, msg.Tag)
 }
 
-// ToMsgObject converts the message into MsgObject.
-func (msg *MsgGetPubKey) ToMsgObject() *MsgObject {
-	obj, _ := ToMsgObject(msg)
-	return obj
-}
-
 // NewMsgGetPubKey returns a new object message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.

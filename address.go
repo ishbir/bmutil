@@ -53,6 +53,10 @@ func (addr *Address) Encode() (string, error) {
 		return "", ErrUnknownAddressType
 	}
 
+	if len(ripe) > 19 {
+		return "", errors.New("improper ripe, doesn't have null bytes in front")
+	}
+
 	var binaryData bytes.Buffer
 	WriteVarInt(&binaryData, addr.Version)
 	WriteVarInt(&binaryData, addr.Stream)
@@ -107,7 +111,7 @@ func DecodeAddress(address string) (*Address, error) {
 	case 2:
 		fallthrough
 	case 3:
-		if len(ripe) > 20 || len(ripe) < 18 { // improper size
+		if len(ripe) > 19 || len(ripe) < 18 { // improper size
 			return nil, errors.New("version 3, the ripe length is invalid")
 		}
 	case 4:
@@ -116,7 +120,7 @@ func DecodeAddress(address string) (*Address, error) {
 			return nil, errors.New("version 4, ripe data has null bytes in" +
 				" the beginning, not properly encoded")
 		}
-		if len(ripe) > 20 || len(ripe) < 4 { // improper size
+		if len(ripe) > 19 || len(ripe) < 4 { // improper size
 			return nil, errors.New("version 4, the ripe length is invalid")
 		}
 	default:

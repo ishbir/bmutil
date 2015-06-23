@@ -66,12 +66,12 @@ func (msg *MsgPubKey) Decode(r io.Reader) error {
 
 	switch msg.Version {
 	case SimplePubKeyVersion:
-		msg.SigningKey, _ = NewPubKey(make([]byte, 64))
-		msg.EncryptionKey, _ = NewPubKey(make([]byte, 64))
+		msg.SigningKey = &PubKey{}
+		msg.EncryptionKey = &PubKey{}
 		return readElements(r, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
 	case ExtendedPubKeyVersion:
-		msg.SigningKey, _ = NewPubKey(make([]byte, 64))
-		msg.EncryptionKey, _ = NewPubKey(make([]byte, 64))
+		msg.SigningKey = &PubKey{}
+		msg.EncryptionKey = &PubKey{}
 		var sigLength uint64
 		err = readElements(r, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
 		if err != nil {
@@ -96,7 +96,7 @@ func (msg *MsgPubKey) Decode(r io.Reader) error {
 		_, err = io.ReadFull(r, msg.Signature)
 		return err
 	case EncryptedPubKeyVersion:
-		msg.Tag, _ = NewShaHash(make([]byte, HashSize))
+		msg.Tag = &ShaHash{}
 		if err = readElement(r, msg.Tag); err != nil {
 			return err
 		}
@@ -168,10 +168,82 @@ func (msg *MsgPubKey) String() string {
 	return fmt.Sprintf("pubkey: v%d %d %s %d %x", msg.Version, msg.Nonce, msg.ExpiresTime, msg.StreamNumber, msg.Tag)
 }
 
-// ToMsgObject converts the message into MsgObject.
-func (msg *MsgPubKey) ToMsgObject() *MsgObject {
-	obj, _ := ToMsgObject(msg)
-	return obj
+// EncodeForSigning encodes MsgPubKey so that it can be hashed and signed.
+func (msg *MsgPubKey) EncodeForSigning(w io.Writer) error {
+	err := EncodeMsgObjectSignatureHeader(w, msg.ExpiresTime, msg.ObjectType,
+		msg.Version, msg.StreamNumber)
+	if err != nil {
+		return err
+	}
+	if msg.Version == EncryptedPubKeyVersion {
+		err = writeElement(w, msg.Tag)
+		if err != nil {
+			return err
+		}
+	}
+	err = writeElements(w, msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	if err = bmutil.WriteVarInt(w, msg.NonceTrials); err != nil {
+		return err
+	}
+	if err = bmutil.WriteVarInt(w, msg.ExtraBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// EncodeForEncryption encodes MsgPubKey so that it can be encrypted.
+func (msg *MsgPubKey) EncodeForEncryption(w io.Writer) error {
+	err := writeElements(w, msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	if err = bmutil.WriteVarInt(w, msg.NonceTrials); err != nil {
+		return err
+	}
+	if err = bmutil.WriteVarInt(w, msg.ExtraBytes); err != nil {
+		return err
+	}
+	sigLength := uint64(len(msg.Signature))
+	if err = bmutil.WriteVarInt(w, sigLength); err != nil {
+		return err
+	}
+	if _, err = w.Write(msg.Signature); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DecodeFromDecrypted decodes MsgPubKey from its decrypted form.
+func (msg *MsgPubKey) DecodeFromDecrypted(r io.Reader) error {
+	msg.SigningKey = &PubKey{}
+	msg.EncryptionKey = &PubKey{}
+	err := readElements(r, &msg.Behavior, msg.SigningKey, msg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	if msg.NonceTrials, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	if msg.ExtraBytes, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	var sigLength uint64
+	if sigLength, err = bmutil.ReadVarInt(r); err != nil {
+		return err
+	}
+	if sigLength > signatureMaxLength {
+		str := fmt.Sprintf("signature length exceeds max length - "+
+			"indicates %d, but max length is %d",
+			sigLength, signatureMaxLength)
+		return messageError("DecodeFromDecrypted", str)
+	}
+	msg.Signature = make([]byte, sigLength)
+	_, err = io.ReadFull(r, msg.Signature)
+	return err
 }
 
 // NewMsgPubKey returns a new object message that conforms to the Message

@@ -61,7 +61,20 @@ func (t ObjectType) String() string {
 // that order. Read Protocol Specifications for more information.
 func EncodeMsgObjectHeader(w io.Writer, nonce uint64, expiresTime time.Time,
 	objectType ObjectType, version uint64, streamNumber uint64) error {
-	err := writeElements(w, nonce, expiresTime, objectType)
+	err := writeElements(w, nonce)
+	if err != nil {
+		return err
+	}
+
+	return EncodeMsgObjectSignatureHeader(w, expiresTime, objectType, version,
+		streamNumber)
+}
+
+// EncodeMsgObjectSignatureHeader encodes the object header used for signing.
+// It consists of everything in the normal object header except for nonce.
+func EncodeMsgObjectSignatureHeader(w io.Writer, expiresTime time.Time,
+	objectType ObjectType, version uint64, streamNumber uint64) error {
+	err := writeElements(w, expiresTime, objectType)
 	if err != nil {
 		return err
 	}
@@ -195,9 +208,7 @@ func DecodeMsgObject(obj []byte) (*MsgObject, error) {
 func ToMsgObject(msg Message) (*MsgObject, error) {
 	switch msg.(type) {
 	case *MsgObject, *MsgGetPubKey, *MsgPubKey, *MsgMsg, *MsgBroadcast, *MsgUnknownObject:
-		objMsg := &MsgObject{}
-		err := objMsg.Decode(bytes.NewReader(EncodeMessage(msg)))
-		return objMsg, err
+		return DecodeMsgObject(EncodeMessage(msg))
 
 	default:
 		return nil, errors.New("Invalid message type")

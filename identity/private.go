@@ -82,7 +82,7 @@ func NewDeterministic(passphrase string, initialZeros uint64) (*Private, error) 
 		return nil, errors.New("minimum 1 initial zero needed")
 	}
 
-	var id = new(Private)
+	id := new(Private)
 
 	var b bytes.Buffer
 
