@@ -70,8 +70,7 @@ func (addr *Address) Encode() (string, error) {
 	return "BM-" + string(base58.Encode(totalBin)), nil // done
 }
 
-// DecodeAddress decodes the Bitmessage address. The assumption is that input
-// address is properly formatted (according to specs).
+// DecodeAddress decodes the Bitmessage address into an Address object.
 func DecodeAddress(address string) (*Address, error) {
 	if address[:3] == "BM-" { // Clients should accept addresses without BM-
 		address = address[3:]
