@@ -10,10 +10,15 @@ import (
 	"errors"
 
 	"github.com/btcsuite/btcd/btcec"
-	"golang.org/x/crypto/ripemd160"
-
+	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/monetas/bmutil"
 	"github.com/monetas/bmutil/pow"
+	"golang.org/x/crypto/ripemd160"
+)
+
+const (
+	// BMPurposeCode is the purpose code used for HD key derivation.
+	BMPurposeCode = 0x424D3031 + hdkeychain.HardenedKeyStart
 )
 
 // Private contains the identity of the user, which includes private encryption
@@ -132,6 +137,67 @@ func NewDeterministic(passphrase string, initialZeros uint64, n int) ([]*Private
 	}
 
 	return ids, nil
+}
+
+// NewHD generates a new hierarchically deterministic key based on BIP-BM01.
+// Master key must be a private master key generated according to BIP32. `n' is
+// the n'th identity to generate. NewHD also generates a v4 address based on the
+// specified stream.
+func NewHD(masterKey *hdkeychain.ExtendedKey, n uint32, stream uint32) (*Private, error) {
+
+	if !masterKey.IsPrivate() {
+		return nil, errors.New("master key must be private")
+	}
+
+	// m / purpose'
+	p, err := masterKey.Child(BMPurposeCode)
+	if err != nil {
+		return nil, err
+	}
+
+	// m / purpose' / identity'
+	i, err := p.Child(hdkeychain.HardenedKeyStart + n)
+	if err != nil {
+		return nil, err
+	}
+
+	// m / purpose' / identity' / stream'
+	s, err := i.Child(hdkeychain.HardenedKeyStart + stream)
+	if err != nil {
+		return nil, err
+	}
+
+	// m / purpose' / identity' / stream' / address'
+	a, err := s.Child(hdkeychain.HardenedKeyStart + 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// m / purpose' / identity' / stream' / address' / 0
+	signKey, err := a.Child(0)
+	if err != nil {
+		return nil, err
+	}
+
+	id := new(Private)
+	id.SigningKey, _ = signKey.ECPrivKey()
+
+	for i := uint32(1); ; i++ {
+		encKey, err := a.Child(i)
+		if err != nil {
+			continue
+		}
+		id.EncryptionKey, _ = encKey.ECPrivKey()
+
+		// We found our hash!
+		if h := id.hash(); h[0] == 0x00 { // First byte should be zero.
+			break // stop calculations
+		}
+	}
+
+	id.CreateAddress(4, uint64(stream))
+	id.setDefaultPOWParams()
+	return id, nil
 }
 
 func (id *Private) setDefaultPOWParams() {

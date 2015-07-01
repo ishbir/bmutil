@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/monetas/bmutil"
 	"github.com/monetas/bmutil/identity"
 	"github.com/monetas/bmutil/pow"
@@ -128,6 +129,30 @@ func TestNewDeterministic(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestNewHD(t *testing.T) {
+	seed := []byte("somegoodrandomseedwouldbeusefulhere")
+
+	masterKey, err := hdkeychain.NewMaster(seed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pvt, err := identity.NewHD(masterKey, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, err := pvt.Address.Encode()
+	expectedAddr := "BM-2cUHvGp1gqZj6z9cEqTRyWWNVhtkd5dPWZ"
+	if err != nil {
+		t.Error("encoding address, got error", err)
+	} else if addr != expectedAddr {
+		t.Errorf("invalid address, expected %s got %s", expectedAddr, addr)
+	}
+
+	// TODO add more test cases with key derivations
 }
 
 func TestErrors(t *testing.T) {
