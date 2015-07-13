@@ -30,6 +30,7 @@ type Private struct {
 	ExtraBytes         uint64
 	SigningKey         *btcec.PrivateKey
 	EncryptionKey      *btcec.PrivateKey
+	Behavior           uint32
 }
 
 // ToPublic turns a Private identity object into Public identity object.
